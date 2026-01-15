@@ -1,0 +1,89 @@
+"""
+SQLite database connection and initialization.
+"""
+import aiosqlite
+from pathlib import Path
+from contextlib import asynccontextmanager
+
+DATABASE_PATH = Path(__file__).parent.parent.parent / "data" / "podcatchup.db"
+
+
+async def init_database():
+    """Initialize the SQLite database with required tables."""
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS episodes (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                podcast_name TEXT,
+                description TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                progress INTEGER DEFAULT 0,
+                status_message TEXT,
+                transcript TEXT,
+                cleaned_transcript TEXT,
+                summary TEXT,
+                error TEXT,
+                duration_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                audio_url TEXT,
+                audio_path TEXT,
+                checkpoint_stage TEXT
+            )
+        """)
+
+        # Migration: add description column if it doesn't exist
+        try:
+            await db.execute("ALTER TABLE episodes ADD COLUMN description TEXT")
+        except Exception:
+            pass  # Column already exists
+
+        # Migration: add language_code column if it doesn't exist
+        try:
+            await db.execute("ALTER TABLE episodes ADD COLUMN language_code TEXT")
+        except Exception:
+            pass  # Column already exists
+
+        # Create index for status filtering
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_status ON episodes(status)
+        """)
+
+        # Create index for sorting by created_at
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_created ON episodes(created_at DESC)
+        """)
+
+        # Usage tracking table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS usage_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                episode_id TEXT,
+                input_units REAL DEFAULT 0,
+                output_units REAL DEFAULT 0,
+                cost_usd REAL DEFAULT 0,
+                metadata TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (episode_id) REFERENCES episodes(id)
+            )
+        """)
+
+        # Index for usage aggregation
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_usage_service ON usage_logs(service, created_at)
+        """)
+
+        await db.commit()
+
+
+@asynccontextmanager
+async def get_db():
+    """Get database connection as async context manager."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        yield db
