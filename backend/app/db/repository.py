@@ -145,6 +145,7 @@ async def get_usage_stats(days: int = 30) -> Dict[str, Any]:
 
 async def create_episode(
     episode_id: str,
+    user_id: str,
     title: Optional[str] = None,
     podcast_name: Optional[str] = None,
     description: Optional[str] = None,
@@ -155,10 +156,10 @@ async def create_episode(
     async with get_db() as db:
         now = datetime.utcnow().isoformat()
         await db.execute("""
-            INSERT INTO episodes (id, title, podcast_name, description, status, progress, audio_url, audio_path, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO episodes (id, user_id, title, podcast_name, description, status, progress, audio_url, audio_path, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            episode_id, title, podcast_name, description,
+            episode_id, user_id, title, podcast_name, description,
             ProcessingStatus.PENDING.value, 0,
             audio_url, audio_path,
             now, now
@@ -277,13 +278,17 @@ async def update_episode_summary(episode_id: str, summary: EpisodeSummary) -> No
         await db.commit()
 
 
-async def get_episode(episode_id: str) -> Optional[EpisodeResult]:
-    """Retrieve episode by ID."""
+async def get_episode(episode_id: str, user_id: Optional[str] = None) -> Optional[EpisodeResult]:
+    """Retrieve episode by ID, optionally filtered by user."""
     async with get_db() as db:
-        async with db.execute(
-            "SELECT * FROM episodes WHERE id = ?",
-            (episode_id,)
-        ) as cursor:
+        if user_id:
+            query = "SELECT * FROM episodes WHERE id = ? AND user_id = ?"
+            params = (episode_id, user_id)
+        else:
+            query = "SELECT * FROM episodes WHERE id = ?"
+            params = (episode_id,)
+
+        async with db.execute(query, params) as cursor:
             row = await cursor.fetchone()
             if row:
                 return _row_to_episode(dict(row))
@@ -291,11 +296,12 @@ async def get_episode(episode_id: str) -> Optional[EpisodeResult]:
 
 
 async def get_all_episodes(
+    user_id: str,
     status_filter: Optional[str] = None,
     limit: int = 50,
     offset: int = 0
 ) -> List[EpisodeResult]:
-    """Get all episodes with optional status filter."""
+    """Get all episodes for a user with optional status filter."""
     async with get_db() as db:
         if status_filter and status_filter != 'all':
             # Handle 'processing' as multiple statuses
@@ -307,34 +313,35 @@ async def get_all_episodes(
                 placeholders = ','.join('?' * len(processing_statuses))
                 query = f"""
                     SELECT * FROM episodes
-                    WHERE status IN ({placeholders})
+                    WHERE user_id = ? AND status IN ({placeholders})
                     ORDER BY created_at DESC
                     LIMIT ? OFFSET ?
                 """
-                params = (*processing_statuses, limit, offset)
+                params = (user_id, *processing_statuses, limit, offset)
             else:
                 query = """
                     SELECT * FROM episodes
-                    WHERE status = ?
+                    WHERE user_id = ? AND status = ?
                     ORDER BY created_at DESC
                     LIMIT ? OFFSET ?
                 """
-                params = (status_filter, limit, offset)
+                params = (user_id, status_filter, limit, offset)
         else:
             query = """
                 SELECT * FROM episodes
+                WHERE user_id = ?
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
             """
-            params = (limit, offset)
+            params = (user_id, limit, offset)
 
         async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
             return [_row_to_episode(dict(row)) for row in rows]
 
 
-async def get_episode_count(status_filter: Optional[str] = None) -> int:
-    """Get total count of episodes."""
+async def get_episode_count(user_id: str, status_filter: Optional[str] = None) -> int:
+    """Get total count of episodes for a user."""
     async with get_db() as db:
         if status_filter and status_filter != 'all':
             if status_filter == 'processing':
@@ -343,14 +350,14 @@ async def get_episode_count(status_filter: Optional[str] = None) -> int:
                     'diarizing', 'cleaning', 'summarizing'
                 )
                 placeholders = ','.join('?' * len(processing_statuses))
-                query = f"SELECT COUNT(*) FROM episodes WHERE status IN ({placeholders})"
-                params = processing_statuses
+                query = f"SELECT COUNT(*) FROM episodes WHERE user_id = ? AND status IN ({placeholders})"
+                params = (user_id, *processing_statuses)
             else:
-                query = "SELECT COUNT(*) FROM episodes WHERE status = ?"
-                params = (status_filter,)
+                query = "SELECT COUNT(*) FROM episodes WHERE user_id = ? AND status = ?"
+                params = (user_id, status_filter)
         else:
-            query = "SELECT COUNT(*) FROM episodes"
-            params = ()
+            query = "SELECT COUNT(*) FROM episodes WHERE user_id = ?"
+            params = (user_id,)
 
         async with db.execute(query, params) as cursor:
             row = await cursor.fetchone()

@@ -1,16 +1,22 @@
 """
 API endpoints for usage statistics and cost tracking.
+Admin only - requires royfrenk@gmail.com account.
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from app.db import repository
+from app.routers.auth import require_admin
 
 router = APIRouter()
 
 
 @router.get("")
-async def get_usage_stats(days: int = Query(30, ge=1, le=365)):
+async def get_usage_stats(
+    admin: dict = Depends(require_admin),
+    days: int = Query(30, ge=1, le=365)
+):
     """
     Get API usage statistics and costs.
+    Admin only.
 
     Returns aggregated usage by service, daily breakdown, and recent logs.
     """
@@ -19,8 +25,8 @@ async def get_usage_stats(days: int = Query(30, ge=1, le=365)):
 
 
 @router.get("/pricing")
-async def get_pricing():
-    """Get current API pricing information."""
+async def get_pricing(admin: dict = Depends(require_admin)):
+    """Get current API pricing information. Admin only."""
     return {
         "assemblyai": {
             "service": "AssemblyAI",

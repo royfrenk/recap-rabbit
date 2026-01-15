@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import episodes, search, usage
+from app.routers import episodes, search, usage, auth
 from app.db.database import init_database
 from app.db import repository
 
@@ -55,6 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(episodes.router, prefix="/api/episodes", tags=["episodes"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])

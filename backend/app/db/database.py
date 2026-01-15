@@ -57,6 +57,36 @@ async def init_database():
             CREATE INDEX IF NOT EXISTS idx_episodes_created ON episodes(created_at DESC)
         """)
 
+        # Users table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT,
+                name TEXT,
+                google_id TEXT UNIQUE,
+                role TEXT DEFAULT 'user',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        """)
+
+        # Index for email lookup
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
+        """)
+
+        # Migration: add user_id to episodes
+        try:
+            await db.execute("ALTER TABLE episodes ADD COLUMN user_id TEXT REFERENCES users(id)")
+        except Exception:
+            pass  # Column already exists
+
+        # Index for user's episodes
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_user ON episodes(user_id)
+        """)
+
         # Usage tracking table
         await db.execute("""
             CREATE TABLE IF NOT EXISTS usage_logs (

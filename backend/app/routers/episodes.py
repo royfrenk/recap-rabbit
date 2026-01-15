@@ -3,7 +3,7 @@ import uuid
 import tempfile
 import asyncio
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query, Depends
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 
@@ -25,6 +25,7 @@ from app.services.cleanup import cleanup_segments, segments_to_text
 from app.services.summarization import summarize_transcript
 from app.services.speaker_identification import identify_speakers, apply_speaker_names
 from app.db import repository
+from app.routers.auth import require_user
 
 router = APIRouter()
 
@@ -179,13 +180,15 @@ async def process_episode(
 
 @router.get("")
 async def list_episodes(
+    user: dict = Depends(require_user),
     status: Optional[str] = Query(None, description="Filter by status: all, completed, processing, failed"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
     """List all episodes with optional status filtering."""
-    episodes = await repository.get_all_episodes(status, limit, offset)
-    total = await repository.get_episode_count(status)
+    user_id = user["sub"]
+    episodes = await repository.get_all_episodes(user_id, status, limit, offset)
+    total = await repository.get_episode_count(user_id, status)
 
     # Convert to list items (lighter weight)
     items = [
@@ -207,6 +210,7 @@ async def list_episodes(
 @router.post("/upload")
 async def upload_episode(
     background_tasks: BackgroundTasks,
+    user: dict = Depends(require_user),
     file: UploadFile = File(...),
     title: Optional[str] = None,
     podcast_name: Optional[str] = None
@@ -217,6 +221,7 @@ async def upload_episode(
             raise HTTPException(status_code=400, detail="File must be an audio file")
 
     episode_id = str(uuid.uuid4())
+    user_id = user["sub"]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         content = await file.read()
@@ -226,6 +231,7 @@ async def upload_episode(
     # Create episode in database
     await repository.create_episode(
         episode_id=episode_id,
+        user_id=user_id,
         title=title or file.filename,
         podcast_name=podcast_name,
         audio_path=temp_path
@@ -245,14 +251,17 @@ async def upload_episode(
 @router.post("/url")
 async def process_url(
     background_tasks: BackgroundTasks,
-    request: EpisodeURLRequest
+    request: EpisodeURLRequest,
+    user: dict = Depends(require_user)
 ):
     """Process a podcast episode from URL."""
     episode_id = str(uuid.uuid4())
+    user_id = user["sub"]
 
     # Create episode in database
     await repository.create_episode(
         episode_id=episode_id,
+        user_id=user_id,
         title=request.title,
         podcast_name=request.podcast_name,
         description=request.description,
@@ -316,9 +325,9 @@ async def resume_episode(episode_id: str, background_tasks: BackgroundTasks):
 
 
 @router.get("/{episode_id}/status")
-async def get_episode_status(episode_id: str):
+async def get_episode_status(episode_id: str, user: dict = Depends(require_user)):
     """Get the processing status of an episode."""
-    episode = await repository.get_episode(episode_id)
+    episode = await repository.get_episode(episode_id, user["sub"])
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -333,9 +342,9 @@ async def get_episode_status(episode_id: str):
 
 
 @router.get("/{episode_id}")
-async def get_episode(episode_id: str):
+async def get_episode(episode_id: str, user: dict = Depends(require_user)):
     """Get full episode results."""
-    episode = await repository.get_episode(episode_id)
+    episode = await repository.get_episode(episode_id, user["sub"])
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -343,9 +352,9 @@ async def get_episode(episode_id: str):
 
 
 @router.post("/{episode_id}/export/pdf")
-async def export_pdf(episode_id: str, options: PDFExportRequest):
+async def export_pdf(episode_id: str, options: PDFExportRequest, user: dict = Depends(require_user)):
     """Generate PDF export of episode results."""
-    episode = await repository.get_episode(episode_id)
+    episode = await repository.get_episode(episode_id, user["sub"])
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
@@ -375,9 +384,9 @@ async def export_pdf(episode_id: str, options: PDFExportRequest):
 
 
 @router.put("/{episode_id}/speakers")
-async def update_speakers(episode_id: str, request: SpeakerUpdateRequest):
+async def update_speakers(episode_id: str, request: SpeakerUpdateRequest, user: dict = Depends(require_user)):
     """Update speaker names for an episode."""
-    episode = await repository.get_episode(episode_id)
+    episode = await repository.get_episode(episode_id, user["sub"])
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
