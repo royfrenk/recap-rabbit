@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import FileUpload from '@/components/FileUpload'
 import { uploadEpisode, processUrl, searchPodcasts, SearchResult } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 export default function Home() {
   const router = useRouter()
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [showSearch, setShowSearch] = useState(false)
@@ -27,30 +29,50 @@ export default function Home() {
   }
 
   const handleUrlSubmit = async (url: string) => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
     setIsLoading(true)
     try {
       const result = await processUrl(url)
       router.push(`/episode/${result.id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('URL processing failed:', error)
-      alert('Failed to process URL. Make sure the backend is running.')
+      if (error.response?.status === 401) {
+        router.push('/login')
+      } else {
+        alert('Failed to process URL. Please try again.')
+      }
       setIsLoading(false)
     }
   }
 
   const handleFileSelect = async (file: File) => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
     setIsLoading(true)
     try {
       const result = await uploadEpisode(file)
       router.push(`/episode/${result.id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload failed:', error)
-      alert('Failed to upload file. Make sure the backend is running.')
+      if (error.response?.status === 401) {
+        router.push('/login')
+      } else {
+        alert('Failed to upload file. Please try again.')
+      }
       setIsLoading(false)
     }
   }
 
   const handleEpisodeSelect = async (episode: SearchResult) => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
     setIsLoading(true)
     try {
       const result = await processUrl(
@@ -60,9 +82,13 @@ export default function Home() {
         episode.description || undefined
       )
       router.push(`/episode/${result.id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Processing failed:', error)
-      alert('Failed to process episode. Make sure the backend is running.')
+      if (error.response?.status === 401) {
+        router.push('/login')
+      } else {
+        alert('Failed to process episode. Please try again.')
+      }
       setIsLoading(false)
     }
   }
