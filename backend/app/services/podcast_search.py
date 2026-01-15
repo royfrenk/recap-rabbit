@@ -1,133 +1,169 @@
-import os
 import httpx
+import xml.etree.ElementTree as ET
 from typing import Optional
+from html import unescape
+import re
 
-from app.db.repository import log_usage
+
+def strip_html(text: str) -> str:
+    """Remove HTML tags from text."""
+    if not text:
+        return ""
+    clean = re.sub(r'<[^>]+>', '', text)
+    return unescape(clean).strip()
+
+
+def parse_duration(duration_str: str) -> Optional[int]:
+    """Parse duration string (HH:MM:SS or seconds) to seconds."""
+    if not duration_str:
+        return None
+    try:
+        # Try parsing as integer seconds
+        return int(duration_str)
+    except ValueError:
+        pass
+
+    # Try parsing as HH:MM:SS or MM:SS
+    parts = duration_str.split(':')
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+    except ValueError:
+        pass
+    return None
+
+
+async def fetch_rss_episodes(feed_url: str, limit: int = 5) -> list[dict]:
+    """Fetch episodes from an RSS feed."""
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            response = await client.get(feed_url, headers={
+                "User-Agent": "RecapRabbit/1.0 (Podcast Summarizer)"
+            })
+            response.raise_for_status()
+
+            # Parse XML
+            root = ET.fromstring(response.text)
+
+            # Find channel and items
+            channel = root.find('channel')
+            if channel is None:
+                return []
+
+            episodes = []
+            items = channel.findall('item')[:limit]
+
+            for item in items:
+                # Get audio URL from enclosure
+                enclosure = item.find('enclosure')
+                audio_url = enclosure.get('url') if enclosure is not None else None
+
+                if not audio_url:
+                    # Try media:content as fallback
+                    media_content = item.find('{http://search.yahoo.com/mrss/}content')
+                    if media_content is not None:
+                        audio_url = media_content.get('url')
+
+                if not audio_url:
+                    continue  # Skip episodes without audio
+
+                # Get title
+                title_elem = item.find('title')
+                title = title_elem.text if title_elem is not None else "Untitled"
+
+                # Get description
+                description = None
+                for desc_tag in ['description', '{http://www.itunes.com/dtds/podcast-1.0.dtd}summary']:
+                    desc_elem = item.find(desc_tag)
+                    if desc_elem is not None and desc_elem.text:
+                        description = strip_html(desc_elem.text)[:500]
+                        break
+
+                # Get duration
+                duration = None
+                duration_elem = item.find('{http://www.itunes.com/dtds/podcast-1.0.dtd}duration')
+                if duration_elem is not None and duration_elem.text:
+                    duration = parse_duration(duration_elem.text)
+
+                # Get publish date
+                pub_date = None
+                pub_date_elem = item.find('pubDate')
+                if pub_date_elem is not None and pub_date_elem.text:
+                    pub_date = pub_date_elem.text
+
+                # Get episode image or use podcast image
+                image_url = None
+                image_elem = item.find('{http://www.itunes.com/dtds/podcast-1.0.dtd}image')
+                if image_elem is not None:
+                    image_url = image_elem.get('href')
+
+                episodes.append({
+                    "title": title,
+                    "description": description,
+                    "audio_url": audio_url,
+                    "duration_seconds": duration,
+                    "publish_date": pub_date,
+                    "thumbnail": image_url
+                })
+
+            return episodes
+    except Exception as e:
+        print(f"Error fetching RSS feed {feed_url}: {e}")
+        return []
 
 
 async def search_podcasts(query: str, limit: int = 10) -> dict:
     """
-    Search for podcast episodes using Listen Notes API.
-    First searches for podcasts, then gets recent episodes from top matches.
+    Search for podcast episodes using iTunes API + RSS feed parsing.
     """
-    api_key = os.getenv("LISTEN_NOTES_API_KEY")
-
-    if not api_key:
-        return {
-            "results": [],
-            "total": 0,
-            "message": "Listen Notes API key not configured. Please use direct URL input."
-        }
-
     try:
-        async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
-            # Step 1: Search for podcasts (not episodes) to find the right show
-            podcast_response = await client.get(
-                "https://listen-api.listennotes.com/api/v2/search",
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Search iTunes for podcasts
+            response = await client.get(
+                "https://itunes.apple.com/search",
                 params={
-                    "q": query,
-                    "type": "podcast",
-                    "offset": 0,
-                    "limit": 3  # Get top 3 matching podcasts
-                },
-                headers={
-                    "X-ListenAPI-Key": api_key
+                    "term": query,
+                    "entity": "podcast",
+                    "limit": 5  # Get top 5 matching podcasts
                 }
             )
-            podcast_response.raise_for_status()
-            podcast_data = podcast_response.json()
+            response.raise_for_status()
+            data = response.json()
 
             results = []
-            podcasts_found = podcast_data.get("results", [])
+            podcasts = data.get("results", [])
 
-            if podcasts_found:
-                # Step 2: Get recent episodes from the top matching podcasts
-                for podcast in podcasts_found[:2]:  # Top 2 podcasts
-                    podcast_id = podcast.get("id")
-                    podcast_name = podcast.get("title_original", "")
-                    thumbnail = podcast.get("thumbnail", "")
+            # For each podcast, fetch recent episodes from RSS feed
+            for podcast in podcasts[:3]:  # Top 3 podcasts
+                podcast_name = podcast.get("collectionName", "")
+                feed_url = podcast.get("feedUrl")
+                thumbnail = podcast.get("artworkUrl600") or podcast.get("artworkUrl100")
 
-                    # Get recent episodes from this podcast
-                    episodes_response = await client.get(
-                        f"https://listen-api.listennotes.com/api/v2/podcasts/{podcast_id}",
-                        params={
-                            "sort": "recent_first"
-                        },
-                        headers={
-                            "X-ListenAPI-Key": api_key
-                        }
-                    )
+                if not feed_url:
+                    continue
 
-                    if episodes_response.status_code == 200:
-                        episodes_data = episodes_response.json()
-                        episodes = episodes_data.get("episodes", [])[:5]  # Latest 5 episodes per podcast
+                # Fetch episodes from RSS feed
+                episodes = await fetch_rss_episodes(feed_url, limit=5)
 
-                        for ep in episodes:
-                            results.append({
-                                "id": ep.get("id", ""),
-                                "title": ep.get("title", ""),
-                                "podcast_name": podcast_name,
-                                "description": ep.get("description", "")[:500] if ep.get("description") else None,
-                                "audio_url": ep.get("audio", ""),
-                                "thumbnail": thumbnail or ep.get("thumbnail", ""),
-                                "duration_seconds": ep.get("audio_length_sec"),
-                                "publish_date": ep.get("pub_date_ms")
-                            })
-
-            # If no podcasts found, fall back to episode search
-            if not results:
-                episode_response = await client.get(
-                    "https://listen-api.listennotes.com/api/v2/search",
-                    params={
-                        "q": query,
-                        "type": "episode",
-                        "len_min": 1,
-                        "len_max": 180,
-                        "sort_by_date": 0,
-                        "offset": 0,
-                        "limit": limit
-                    },
-                    headers={
-                        "X-ListenAPI-Key": api_key
-                    }
-                )
-                episode_response.raise_for_status()
-                data = episode_response.json()
-
-                for item in data.get("results", []):
+                for ep in episodes:
                     results.append({
-                        "id": item.get("id", ""),
-                        "title": item.get("title_original", ""),
-                        "podcast_name": item.get("podcast", {}).get("title_original", ""),
-                        "description": item.get("description_original", "")[:500] if item.get("description_original") else None,
-                        "audio_url": item.get("audio", ""),
-                        "thumbnail": item.get("thumbnail", ""),
-                        "duration_seconds": item.get("audio_length_sec"),
-                        "publish_date": item.get("pub_date_ms")
+                        "id": f"itunes_{hash(ep['audio_url']) % 10000000}",
+                        "title": ep["title"],
+                        "podcast_name": podcast_name,
+                        "description": ep["description"],
+                        "audio_url": ep["audio_url"],
+                        "thumbnail": ep["thumbnail"] or thumbnail,
+                        "duration_seconds": ep["duration_seconds"],
+                        "publish_date": ep["publish_date"]
                     })
-
-            # Log usage (count API calls made)
-            api_calls = 1  # Initial podcast search
-            api_calls += min(len(podcasts_found), 2)  # Episode fetches for top 2 podcasts
-            if not results:
-                api_calls += 1  # Fallback episode search
-
-            await log_usage(
-                service="listennotes",
-                operation="search",
-                input_units=api_calls,
-                output_units=len(results),
-                cost_usd=0,  # Free tier
-                metadata={
-                    "query": query,
-                    "results_count": len(results)
-                }
-            )
 
             return {
                 "results": results[:limit],
                 "total": len(results)
             }
+
     except Exception as e:
         return {
             "results": [],
@@ -138,35 +174,6 @@ async def search_podcasts(query: str, limit: int = 10) -> dict:
 
 async def get_episode_details(episode_id: str) -> Optional[dict]:
     """Get detailed information about a specific episode."""
-    api_key = os.getenv("LISTEN_NOTES_API_KEY")
-
-    if not api_key:
-        return None
-
-    try:
-        async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
-            response = await client.get(
-                f"https://listen-api.listennotes.com/api/v2/episodes/{episode_id}",
-                headers={
-                    "X-ListenAPI-Key": api_key
-                }
-            )
-
-            if response.status_code == 404:
-                return None
-
-            response.raise_for_status()
-            data = response.json()
-
-            return {
-                "id": data.get("id", ""),
-                "title": data.get("title", ""),
-                "podcast_name": data.get("podcast", {}).get("title", ""),
-                "description": data.get("description", ""),
-                "audio_url": data.get("audio", ""),
-                "thumbnail": data.get("thumbnail", ""),
-                "duration_seconds": data.get("audio_length_sec"),
-                "publish_date": data.get("pub_date_ms")
-            }
-    except Exception:
-        return None
+    # iTunes doesn't support direct episode lookup by ID
+    # This would require caching or a different approach
+    return None
