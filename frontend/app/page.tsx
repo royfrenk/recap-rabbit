@@ -7,9 +7,10 @@ import FileUpload from '@/components/FileUpload'
 import HeroSection from '@/components/HeroSection'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, SearchResult } from '@/lib/api'
+import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, lookupPodcastByUrl, getPodcastEpisodes, isPodcastPlatformUrl, SearchResult, PodcastLookupResult } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { Clock, Podcast } from 'lucide-react'
+import { Clock, Podcast, Calendar, ChevronLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 const DEFAULT_POPULAR_SEARCHES = [
   "Tim Ferriss productivity",
@@ -18,6 +19,44 @@ const DEFAULT_POPULAR_SEARCHES = [
   "Joe Rogan science",
 ]
 
+// Format publish date like Apple Podcasts (e.g., "Jan 8", "12/25/2024", "7h ago")
+function formatPublishDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+
+    // Less than 24 hours ago
+    if (diffHours < 24 && diffHours >= 0) {
+      return `${diffHours}h ago`
+    }
+
+    // Same year - show "Jan 8" format
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+
+    // Different year - show "12/25/2024" format
+    return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
+  } catch {
+    return dateStr
+  }
+}
+
+// Format duration like "1 hr 31 min" or "45 min"
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.round((seconds % 3600) / 60)
+
+  if (hours > 0) {
+    return `${hours} hr ${minutes} min`
+  }
+  return `${minutes} min`
+}
+
 export default function Home() {
   const router = useRouter()
   const { user } = useAuth()
@@ -25,6 +64,7 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [showSearch, setShowSearch] = useState(false)
   const [popularSearches, setPopularSearches] = useState<string[]>(DEFAULT_POPULAR_SEARCHES)
+  const [viewingPodcast, setViewingPodcast] = useState<{ id: string; name: string; thumbnail?: string } | null>(null)
 
   // Fetch popular searches on mount
   useEffect(() => {
@@ -48,6 +88,7 @@ export default function Home() {
 
   const handleSearch = async (query: string) => {
     setIsLoading(true)
+    setViewingPodcast(null)  // Clear any podcast view when doing a new search
     try {
       const results = await searchPodcasts(query)
       setSearchResults(results.results)
@@ -61,6 +102,32 @@ export default function Home() {
   }
 
   const handleUrlSubmit = async (url: string) => {
+    // Check if this is a podcast platform URL (like Apple Podcasts)
+    if (isPodcastPlatformUrl(url)) {
+      setIsLoading(true)
+      try {
+        const result = await lookupPodcastByUrl(url)
+        if (result.results.length > 0) {
+          setSearchResults(result.results)
+          setViewingPodcast({
+            id: result.podcast_id || '',
+            name: result.podcast_name || 'Podcast',
+            thumbnail: result.podcast_thumbnail
+          })
+          setShowSearch(true)
+        } else {
+          alert(result.message || 'Could not load podcast. Please try a different URL.')
+        }
+      } catch (error: any) {
+        console.error('Podcast lookup failed:', error)
+        alert('Failed to load podcast. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
+    // Direct audio URL - requires authentication
     if (!user) {
       router.push('/login')
       return
@@ -78,6 +145,27 @@ export default function Home() {
       }
       setIsLoading(false)
     }
+  }
+
+  const handleViewPodcast = async (podcastId: string, podcastName: string, thumbnail?: string) => {
+    setIsLoading(true)
+    try {
+      const result = await getPodcastEpisodes(podcastId)
+      setSearchResults(result.results)
+      setViewingPodcast({ id: podcastId, name: podcastName, thumbnail })
+      setShowSearch(true)
+    } catch (error: any) {
+      console.error('Failed to load podcast:', error)
+      alert('Failed to load podcast episodes.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleBackToSearch = () => {
+    setViewingPodcast(null)
+    setSearchResults([])
+    setShowSearch(false)
   }
 
   const handleFileSelect = async (file: File) => {
@@ -167,7 +255,36 @@ export default function Home() {
       {/* Search Results */}
       {showSearch && searchResults.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+          {/* Podcast View Header */}
+          {viewingPodcast ? (
+            <div className="mb-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToSearch}
+                className="mb-4 -ml-2"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Back to search
+              </Button>
+              <div className="flex items-center gap-4">
+                {viewingPodcast.thumbnail && (
+                  <img
+                    src={viewingPodcast.thumbnail}
+                    alt=""
+                    className="w-20 h-20 rounded-lg object-cover"
+                  />
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold">{viewingPodcast.name}</h2>
+                  <p className="text-sm text-muted-foreground">{searchResults.length} episodes</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+          )}
+
           <div className="space-y-3">
             {searchResults.map((episode) => (
               <Card
@@ -186,18 +303,36 @@ export default function Home() {
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">{episode.title}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Podcast className="h-3 w-3 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">{episode.podcast_name}</p>
-                      </div>
-                      {episode.duration_seconds && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {Math.round(episode.duration_seconds / 60)} min
-                          </span>
-                        </div>
+
+                      {/* Podcast name - clickable to view all episodes */}
+                      {!viewingPodcast && episode.podcast_id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleViewPodcast(episode.podcast_id!, episode.podcast_name, episode.thumbnail || undefined)
+                          }}
+                          className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
+                        >
+                          <Podcast className="h-3 w-3" />
+                          {episode.podcast_name}
+                        </button>
                       )}
+
+                      {/* Date and duration row */}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        {episode.publish_date && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatPublishDate(episode.publish_date)}</span>
+                          </div>
+                        )}
+                        {episode.duration_seconds && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatDuration(episode.duration_seconds)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

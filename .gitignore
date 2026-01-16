@@ -39,3 +39,6 @@ npm-debug.log*
 # Database (local only)
 *.db
 backend/data/
+
+# TypeScript build info
+*.tsbuildinfo

@@ -106,11 +106,21 @@ export interface SearchResult {
   id: string
   title: string
   podcast_name: string
+  podcast_id?: string
   description: string | null
   audio_url: string
   thumbnail: string | null
   duration_seconds: number | null
   publish_date: string | null
+}
+
+export interface PodcastLookupResult {
+  results: SearchResult[]
+  total: number
+  podcast_id?: string
+  podcast_name?: string
+  podcast_thumbnail?: string
+  message?: string
 }
 
 export async function uploadEpisode(file: File, title?: string, podcastName?: string): Promise<{ id: string }> {
@@ -167,6 +177,25 @@ export async function searchPodcasts(query: string, limit: number = 10): Promise
 export async function getPopularSearches(limit: number = 6): Promise<string[]> {
   const response = await api.get('/search/popular', { params: { limit } })
   return response.data
+}
+
+export async function lookupPodcastByUrl(url: string, limit: number = 20): Promise<PodcastLookupResult> {
+  const response = await api.get('/search/podcast/lookup', { params: { url, limit } })
+  return response.data
+}
+
+export async function getPodcastEpisodes(podcastId: string, limit: number = 50): Promise<PodcastLookupResult> {
+  const response = await api.get(`/search/podcast/${podcastId}`, { params: { limit } })
+  return response.data
+}
+
+// Helper to detect if a URL is a podcast platform URL (vs direct audio URL)
+export function isPodcastPlatformUrl(url: string): boolean {
+  const platformPatterns = [
+    /podcasts\.apple\.com/,
+    /itunes\.apple\.com.*podcast/,
+  ]
+  return platformPatterns.some(pattern => pattern.test(url))
 }
 
 export async function getEpisodeHistory(
