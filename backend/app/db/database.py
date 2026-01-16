@@ -13,6 +13,15 @@ DATABASE_PATH = Path(os.getenv("DATABASE_PATH", Path(__file__).parent.parent.par
 async def init_database():
     """Initialize the SQLite database with required tables."""
     print(f"Database path: {DATABASE_PATH}", flush=True)
+    print(f"Data directory exists: {DATABASE_PATH.parent.exists()}", flush=True)
+    print(f"Database file exists: {DATABASE_PATH.exists()}", flush=True)
+    if DATABASE_PATH.exists():
+        print(f"Database file size: {DATABASE_PATH.stat().st_size} bytes", flush=True)
+
+    # List contents of /app/data if it exists
+    if DATABASE_PATH.parent.exists():
+        print(f"Contents of {DATABASE_PATH.parent}: {list(DATABASE_PATH.parent.iterdir())}", flush=True)
+
     print(f"Creating directory: {DATABASE_PATH.parent}", flush=True)
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     print(f"Directory created/exists", flush=True)
@@ -133,6 +142,15 @@ async def init_database():
         """)
 
         await db.commit()
+
+        # Diagnostic: count existing records
+        cursor = await db.execute("SELECT COUNT(*) FROM episodes")
+        episode_count = (await cursor.fetchone())[0]
+        print(f"Episodes in database after init: {episode_count}", flush=True)
+
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        user_count = (await cursor.fetchone())[0]
+        print(f"Users in database after init: {user_count}", flush=True)
 
 
 @asynccontextmanager
