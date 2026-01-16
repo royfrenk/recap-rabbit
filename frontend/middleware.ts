@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Hardcoded credentials for staging
+const STAGING_USER = 'recap'
+const STAGING_PASS = 'rabbit'
+
 export function middleware(request: NextRequest) {
-  // Only protect staging environment
-  const isStaging = process.env.STAGING_AUTH === 'true'
+  // Only protect if hostname contains 'staging'
+  const hostname = request.headers.get('host') || ''
+  const isStaging = hostname.includes('staging')
 
   if (!isStaging) {
     return NextResponse.next()
@@ -12,24 +17,16 @@ export function middleware(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
 
   if (authHeader) {
-    const [scheme, encoded] = authHeader.split(' ')
-    if (scheme === 'Basic' && encoded) {
-      try {
-        // Use Web API for base64 decoding (Edge compatible)
-        const decoded = new TextDecoder().decode(
-          Uint8Array.from(atob(encoded), c => c.charCodeAt(0))
-        )
-        const colonIndex = decoded.indexOf(':')
-        const user = decoded.slice(0, colonIndex)
-        const pass = decoded.slice(colonIndex + 1)
+    try {
+      const encoded = authHeader.split(' ')[1]
+      const decoded = atob(encoded)
+      const [user, pass] = decoded.split(':')
 
-        // Check credentials
-        if (user === process.env.STAGING_USER && pass === process.env.STAGING_PASS) {
-          return NextResponse.next()
-        }
-      } catch (e) {
-        // Invalid base64
+      if (user === STAGING_USER && pass === STAGING_PASS) {
+        return NextResponse.next()
       }
+    } catch (e) {
+      // ignore
     }
   }
 
