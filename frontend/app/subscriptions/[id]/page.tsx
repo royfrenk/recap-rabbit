@@ -25,18 +25,7 @@ import {
 } from '@/lib/api'
 import EpisodeSelector from '@/components/EpisodeSelector'
 import { useAuth } from '@/lib/auth'
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+import { dateFormatters } from '@/lib/date'
 
 export default function SubscriptionDetailPage() {
   const router = useRouter()
@@ -209,8 +198,8 @@ export default function SubscriptionDetailPage() {
                     </span>
                   )}
                 </p>
-                <p>Last checked: {formatDate(subscription.last_checked_at)}</p>
-                <p>Subscribed: {formatDate(subscription.created_at)}</p>
+                <p>Last checked: {dateFormatters.lastChecked(subscription.last_checked_at)}</p>
+                <p>Subscribed: {dateFormatters.createdAt(subscription.created_at)}</p>
               </div>
 
               {/* Actions */}

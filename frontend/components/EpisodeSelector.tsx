@@ -23,6 +23,7 @@ import {
   SubscriptionEpisodeStatus,
   batchProcessEpisodes
 } from '@/lib/api'
+import { dateFormatters } from '@/lib/date'
 
 interface EpisodeSelectorProps {
   subscriptionId: string
@@ -38,16 +39,6 @@ const statusStyles: Record<SubscriptionEpisodeStatus, { label: string; className
   completed: { label: 'Processed', className: 'bg-green-100 text-green-800' },
   skipped: { label: 'Skipped', className: 'bg-yellow-100 text-yellow-800' },
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800' }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Unknown'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
 }
 
 function formatDuration(seconds: number | null): string {
@@ -317,7 +308,7 @@ export default function EpisodeSelector({
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDate(episode.publish_date)}
+                        {dateFormatters.publishDate(episode.publish_date)}
                       </span>
                       {episode.duration_seconds && (
                         <span className="flex items-center gap-1">
@@ -379,7 +370,7 @@ export default function EpisodeSelector({
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDate(episode.publish_date)}
+                        {dateFormatters.publishDate(episode.publish_date)}
                       </span>
                     </div>
                   </div>

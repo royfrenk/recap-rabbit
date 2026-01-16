@@ -21,21 +21,12 @@ import {
   deleteSubscription,
   checkSubscriptionForNewEpisodes
 } from '@/lib/api'
+import { dateFormatters } from '@/lib/date'
 
 interface SubscriptionCardProps {
   subscription: Subscription
   onClick: () => void
   onUpdate: () => void
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
 }
 
 export default function SubscriptionCard({
@@ -141,7 +132,7 @@ export default function SubscriptionCard({
                   </span>
                 )}
               </p>
-              <p>Last checked: {formatDate(subscription.last_checked_at)}</p>
+              <p>Last checked: {dateFormatters.lastCheckedShort(subscription.last_checked_at)}</p>
             </div>
 
             {/* Actions */}

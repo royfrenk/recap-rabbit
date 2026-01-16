@@ -20,6 +20,44 @@ ALLOWED_SCHEMES = {'http', 'https'}
 # Block private/internal networks
 BLOCKED_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', '::1'}
 
+# Episode fetch limits - to prevent loading thousands of episodes on initial fetch
+DEFAULT_EPISODE_LIMIT = 100
+MAX_EPISODE_LIMIT = 500
+
+# Concurrent subscription checking - limits parallel RSS fetches
+MAX_CONCURRENT_CHECKS = 5
+RATE_LIMIT_DELAY = 0.5  # seconds between checks within a batch
+
+# Trusted CDNs for podcast artwork
+TRUSTED_ARTWORK_HOSTS = {
+    # Apple Podcasts
+    'is1-ssl.mzstatic.com',
+    'is2-ssl.mzstatic.com',
+    'is3-ssl.mzstatic.com',
+    'is4-ssl.mzstatic.com',
+    'is5-ssl.mzstatic.com',
+    # Spotify
+    'i.scdn.co',
+    'mosaic.scdn.co',
+    # Podcast hosting platforms
+    'megaphone.imgix.net',
+    'image.simplecastcdn.com',
+    'ssl-static.libsyn.com',
+    'assets.pippa.io',
+    'images.transistor.fm',
+    'd1bm3dmew779uf.cloudfront.net',
+    'media.redcircle.com',
+    'pbcdn1.podbean.com',
+    'images.buzzsprout.com',
+    'd3t3ozftmdmh3i.cloudfront.net',  # Anchor
+    'storage.pinecast.net',
+    'images.podiant.co',
+    'www.omnycontent.com',
+    # Common CDNs
+    'd.radioline.fr',
+    'static.libsyn.com',
+}
+
 
 def validate_feed_url(url: str) -> bool:
     """
@@ -51,10 +89,83 @@ def validate_feed_url(url: str) -> bool:
         return False
 
 
-async def fetch_rss_feed(feed_url: str) -> List[Dict[str, Any]]:
+def validate_artwork_url(url: str | None) -> str | None:
+    """
+    Validate that an artwork URL is safe to fetch and display.
+    Returns sanitized URL if valid, None if invalid/unsafe.
+
+    This prevents SSRF attacks through artwork URLs while allowing
+    legitimate podcast artwork from trusted sources.
+    """
+    if not url:
+        return None
+
+    try:
+        parsed = urlparse(url)
+
+        # Check scheme (only http/https allowed)
+        if parsed.scheme.lower() not in ALLOWED_SCHEMES:
+            logger.warning(f"Invalid artwork URL scheme: {url}")
+            return None
+
+        hostname = parsed.hostname or ''
+        hostname_lower = hostname.lower()
+
+        # Block internal hosts (SSRF protection)
+        if hostname_lower in BLOCKED_HOSTS:
+            logger.warning(f"Blocked internal artwork URL: {url}")
+            return None
+
+        # Block private IP ranges
+        if hostname.startswith('10.') or hostname.startswith('192.168.') or hostname.startswith('172.'):
+            logger.warning(f"Blocked private IP in artwork URL: {url}")
+            return None
+
+        # Must have a valid hostname
+        if not hostname or '.' not in hostname:
+            logger.warning(f"Invalid hostname in artwork URL: {url}")
+            return None
+
+        # Allow trusted CDNs unconditionally
+        if hostname_lower in TRUSTED_ARTWORK_HOSTS:
+            return url
+
+        # Allow *.mzstatic.com wildcard (Apple uses numbered subdomains)
+        if hostname_lower.endswith('.mzstatic.com'):
+            return url
+
+        # For other hosts, require image-like path
+        path_lower = parsed.path.lower()
+        image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg')
+        image_path_markers = ('/image/', '/images/', '/artwork/', '/cover/', '/thumb/', '/avatar/')
+
+        has_image_extension = any(path_lower.endswith(ext) for ext in image_extensions)
+        has_image_marker = any(marker in path_lower for marker in image_path_markers)
+
+        if has_image_extension or has_image_marker:
+            return url
+
+        # URL doesn't look like an image - reject for safety
+        logger.warning(f"Artwork URL doesn't appear to be an image: {url}")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Error validating artwork URL '{url}': {e}")
+        return None
+
+
+async def fetch_rss_feed(
+    feed_url: str,
+    limit: int | None = DEFAULT_EPISODE_LIMIT
+) -> List[Dict[str, Any]]:
     """
     Fetch and parse an RSS feed.
     Returns list of episode dicts with guid, title, audio_url, publish_date, duration_seconds.
+
+    Args:
+        feed_url: The RSS feed URL to fetch.
+        limit: Maximum number of episodes to return (newest first).
+               None means no limit. Default is DEFAULT_EPISODE_LIMIT (100).
 
     Raises ValueError if URL is invalid or unsafe.
     """
@@ -124,16 +235,36 @@ async def fetch_rss_feed(feed_url: str) -> List[Dict[str, Any]]:
             'duration_seconds': duration_seconds
         })
 
+    # Sort episodes by publish_date (newest first) and apply limit
+    episodes.sort(
+        key=lambda ep: ep.get('publish_date') or '',
+        reverse=True
+    )
+
+    if limit is not None and limit > 0:
+        episodes = episodes[:limit]
+
     return episodes
 
 
-async def fetch_and_store_episodes(subscription_id: str, feed_url: str) -> int:
+async def fetch_and_store_episodes(
+    subscription_id: str,
+    feed_url: str,
+    limit: int | None = DEFAULT_EPISODE_LIMIT
+) -> int:
     """
-    Fetch RSS feed and store all episodes for a new subscription.
+    Fetch RSS feed and store episodes for a subscription.
+
+    Args:
+        subscription_id: The subscription ID to store episodes for.
+        feed_url: The RSS feed URL to fetch.
+        limit: Maximum number of episodes to fetch. Default is DEFAULT_EPISODE_LIMIT (100).
+               Pass None to fetch all available episodes (up to what the feed provides).
+
     Returns count of episodes stored.
     """
     try:
-        episodes = await fetch_rss_feed(feed_url)
+        episodes = await fetch_rss_feed(feed_url, limit=limit)
         if episodes:
             count = await repository.bulk_create_subscription_episodes(subscription_id, episodes)
 
@@ -270,33 +401,106 @@ async def process_subscription_episodes(
             await repository.update_subscription_episode_status([ep['id']], 'failed')
 
 
-async def check_all_active_subscriptions():
+async def _check_single_subscription(sub: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Check all active subscriptions for new episodes.
+    Check a single subscription for new episodes.
+
+    Args:
+        sub: Subscription dict with id, feed_url, user_id, podcast_name.
+
+    Returns:
+        Dict with subscription_id, success, new_episodes, error (if any).
+    """
+    result = {
+        'subscription_id': sub['id'],
+        'success': False,
+        'new_episodes': 0,
+        'error': None
+    }
+
+    try:
+        check_result = await check_subscription_for_new_episodes(sub['id'], sub['feed_url'])
+
+        # Update last checked time
+        await repository.update_subscription(
+            sub['id'], sub['user_id'],
+            last_checked_at=datetime.utcnow().isoformat()
+        )
+
+        # Auto-process new episodes
+        if check_result['new_episode_ids']:
+            await auto_process_episodes(
+                sub['id'],
+                check_result['new_episode_ids'],
+                sub['podcast_name']
+            )
+
+        result['success'] = True
+        result['new_episodes'] = check_result['new_count']
+
+    except Exception as e:
+        logger.exception(f"Error checking subscription {sub['id']}")
+        result['error'] = str(e)
+
+    return result
+
+
+async def check_all_active_subscriptions() -> Dict[str, Any]:
+    """
+    Check all active subscriptions for new episodes concurrently.
     Called by the scheduler every 6 hours.
+
+    Uses a semaphore to limit concurrent RSS fetches to MAX_CONCURRENT_CHECKS
+    to avoid overwhelming external servers and local resources.
+
+    Returns:
+        Dict with total, checked, new_episodes, errors counts.
     """
     subscriptions = await repository.get_active_subscriptions()
 
-    for sub in subscriptions:
-        try:
-            result = await check_subscription_for_new_episodes(sub['id'], sub['feed_url'])
+    if not subscriptions:
+        logger.info("No active subscriptions to check")
+        return {'total': 0, 'checked': 0, 'new_episodes': 0, 'errors': 0}
 
-            # Update last checked time
-            await repository.update_subscription(
-                sub['id'], sub['user_id'],
-                last_checked_at=datetime.utcnow().isoformat()
-            )
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CHECKS)
 
-            # Auto-process new episodes
-            if result['new_episode_ids']:
-                await auto_process_episodes(
-                    sub['id'],
-                    result['new_episode_ids'],
-                    sub['podcast_name']
-                )
+    async def check_with_semaphore(sub: Dict[str, Any]) -> Dict[str, Any]:
+        async with semaphore:
+            # Rate limiting delay to be nice to external servers
+            await asyncio.sleep(RATE_LIMIT_DELAY)
+            return await _check_single_subscription(sub)
 
-        except Exception as e:
-            logger.exception(f"Error checking subscription {sub['id']}")
+    # Run all checks concurrently with semaphore limiting
+    results = await asyncio.gather(
+        *[check_with_semaphore(sub) for sub in subscriptions],
+        return_exceptions=True
+    )
 
-        # Small delay between subscriptions to avoid overwhelming the system
-        await asyncio.sleep(1)
+    # Aggregate results
+    total = len(subscriptions)
+    checked = 0
+    new_episodes = 0
+    errors = 0
+
+    for r in results:
+        if isinstance(r, Exception):
+            errors += 1
+            logger.exception(f"Unexpected error in subscription check: {r}")
+        elif isinstance(r, dict):
+            if r.get('success'):
+                checked += 1
+                new_episodes += r.get('new_episodes', 0)
+            else:
+                errors += 1
+
+    logger.info(
+        f"Subscription check complete: {checked}/{total} checked, "
+        f"{new_episodes} new episodes, {errors} errors"
+    )
+
+    return {
+        'total': total,
+        'checked': checked,
+        'new_episodes': new_episodes,
+        'errors': errors
+    }

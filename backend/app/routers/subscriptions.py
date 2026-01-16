@@ -83,12 +83,16 @@ async def create_subscription(
 ):
     """Subscribe to a podcast."""
     # Validate feed URL before creating subscription (SSRF protection)
-    from app.services.subscription_checker import validate_feed_url
+    from app.services.subscription_checker import validate_feed_url, validate_artwork_url
     if not validate_feed_url(request.feed_url):
         raise HTTPException(
             status_code=400,
             detail="Invalid feed URL. Only HTTP/HTTPS URLs to public hosts are allowed."
         )
+
+    # Validate and sanitize artwork URL (SSRF protection)
+    # If invalid, we simply don't store the artwork URL rather than rejecting the subscription
+    validated_artwork_url = validate_artwork_url(request.artwork_url)
 
     user_id = user["sub"]
     subscription_id = str(uuid.uuid4())
@@ -99,7 +103,7 @@ async def create_subscription(
         podcast_id=request.podcast_id,
         podcast_name=request.podcast_name,
         feed_url=request.feed_url,
-        artwork_url=request.artwork_url
+        artwork_url=validated_artwork_url
     )
 
     if not success:
@@ -331,3 +335,64 @@ async def batch_process_episodes(
         "message": f"Processing {len(valid_episodes)} episodes",
         "episode_count": len(valid_episodes)
     }
+
+
+@router.post("/{subscription_id}/fetch-more")
+async def fetch_more_episodes(
+    subscription_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(require_user),
+    limit: int = Query(100, ge=1, le=500, description="Number of additional episodes to fetch")
+):
+    """
+    Fetch additional historical episodes beyond the initial 100.
+
+    This endpoint allows users to load more episodes from a podcast's back catalog.
+    By default, only the 100 most recent episodes are loaded on subscription.
+    Use this endpoint to fetch older episodes.
+    """
+    user_id = user["sub"]
+
+    row = await repository.get_subscription(subscription_id, user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    from app.services.subscription_checker import fetch_rss_feed, MAX_EPISODE_LIMIT
+
+    # Cap the limit
+    if limit > MAX_EPISODE_LIMIT:
+        limit = MAX_EPISODE_LIMIT
+
+    try:
+        # Fetch episodes without limit to get the full catalog, then filter
+        all_episodes = await fetch_rss_feed(row['feed_url'], limit=None)
+
+        # Filter out episodes we already have
+        new_episodes = []
+        for ep in all_episodes:
+            exists = await repository.check_episode_exists(subscription_id, ep['guid'])
+            if not exists:
+                new_episodes.append(ep)
+
+        # Apply limit to new episodes
+        new_episodes = new_episodes[:limit]
+
+        if not new_episodes:
+            return {
+                "message": "No additional episodes found",
+                "fetched_count": 0,
+                "total_available": len(all_episodes)
+            }
+
+        # Store the new episodes
+        count = await repository.bulk_create_subscription_episodes(subscription_id, new_episodes)
+
+        return {
+            "message": f"Fetched {count} additional episodes",
+            "fetched_count": count,
+            "total_available": len(all_episodes)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to fetch additional episodes")
