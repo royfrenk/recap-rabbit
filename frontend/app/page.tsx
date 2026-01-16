@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, lookupPodcastByUrl, getPodcastEpisodes, isPodcastPlatformUrl, SearchResult, PodcastLookupResult } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { Clock, Podcast, Calendar, ChevronLeft } from 'lucide-react'
+import { Clock, Podcast, Calendar, ChevronLeft, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const DEFAULT_POPULAR_SEARCHES = [
@@ -286,58 +286,89 @@ export default function Home() {
           )}
 
           <div className="space-y-3">
-            {searchResults.map((episode) => (
-              <Card
-                key={episode.id}
-                className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
-                onClick={() => !isLoading && handleEpisodeSelect(episode)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    {episode.thumbnail && (
-                      <img
-                        src={episode.thumbnail}
-                        alt=""
-                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{episode.title}</h3>
+            {searchResults.map((episode) => {
+              // Build preview URL with episode data
+              const previewParams = new URLSearchParams({
+                title: episode.title,
+                podcast: episode.podcast_name,
+                audio: episode.audio_url,
+                ...(episode.thumbnail && { thumb: episode.thumbnail }),
+                ...(episode.duration_seconds && { duration: String(episode.duration_seconds) }),
+                ...(episode.publish_date && { date: episode.publish_date }),
+                ...(episode.description && { desc: episode.description }),
+                ...(episode.podcast_id && { podcastId: episode.podcast_id }),
+              })
+              const previewUrl = `/preview/${episode.id}?${previewParams.toString()}`
 
-                      {/* Podcast name - clickable to view all episodes */}
-                      {!viewingPodcast && episode.podcast_id && (
-                        <button
+              return (
+                <Card
+                  key={episode.id}
+                  className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                  onClick={() => router.push(previewUrl)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex gap-4">
+                      {episode.thumbnail && (
+                        <img
+                          src={episode.thumbnail}
+                          alt=""
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground line-clamp-2">{episode.title}</h3>
+
+                        {/* Podcast name - clickable to view all episodes */}
+                        {!viewingPodcast && episode.podcast_id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleViewPodcast(episode.podcast_id!, episode.podcast_name, episode.thumbnail || undefined)
+                            }}
+                            className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
+                          >
+                            <Podcast className="h-3 w-3" />
+                            {episode.podcast_name}
+                          </button>
+                        )}
+
+                        {/* Date and duration row */}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {episode.publish_date && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{formatPublishDate(episode.publish_date)}</span>
+                            </div>
+                          )}
+                          {episode.duration_seconds && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatDuration(episode.duration_seconds)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Get Summary button */}
+                      <div className="flex-shrink-0 self-center">
+                        <Button
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleViewPodcast(episode.podcast_id!, episode.podcast_name, episode.thumbnail || undefined)
+                            handleEpisodeSelect(episode)
                           }}
-                          className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
+                          disabled={isLoading}
+                          className="gap-1"
                         >
-                          <Podcast className="h-3 w-3" />
-                          {episode.podcast_name}
-                        </button>
-                      )}
-
-                      {/* Date and duration row */}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        {episode.publish_date && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{formatPublishDate(episode.publish_date)}</span>
-                          </div>
-                        )}
-                        {episode.duration_seconds && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{formatDuration(episode.duration_seconds)}</span>
-                          </div>
-                        )}
+                          <Sparkles className="h-3 w-3" />
+                          <span className="hidden sm:inline">Get Summary</span>
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </div>
       )}
