@@ -71,7 +71,7 @@ async def init_database():
 
         # Migration: add slug for URL-friendly public URLs
         try:
-            await db.execute("ALTER TABLE episodes ADD COLUMN slug TEXT UNIQUE")
+            await db.execute("ALTER TABLE episodes ADD COLUMN slug TEXT")
         except Exception:
             pass  # Column already exists
 
@@ -158,9 +158,9 @@ async def init_database():
             CREATE INDEX IF NOT EXISTS idx_episodes_public ON episodes(is_public, status)
         """)
 
-        # Index for slug lookup
+        # Index for slug lookup (unique constraint enforced via index)
         await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_episodes_slug ON episodes(slug)
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_episodes_slug ON episodes(slug) WHERE slug IS NOT NULL
         """)
 
         await db.commit()
