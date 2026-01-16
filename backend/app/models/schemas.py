@@ -132,3 +132,79 @@ class PublicSummaryResponse(BaseModel):
     duration_seconds: Optional[float] = None
     language_code: Optional[str] = None
     created_at: Optional[str] = None
+
+
+# ============ Subscription Models ============
+
+class SubscriptionEpisodeStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+class SubscriptionEpisode(BaseModel):
+    """Episode within a subscription."""
+    id: int
+    subscription_id: str
+    episode_guid: str
+    episode_title: Optional[str] = None
+    audio_url: Optional[str] = None
+    publish_date: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    episode_id: Optional[str] = None  # Linked processed episode
+    status: SubscriptionEpisodeStatus = SubscriptionEpisodeStatus.PENDING
+    created_at: Optional[str] = None
+
+
+class Subscription(BaseModel):
+    """Podcast subscription."""
+    id: str
+    user_id: str
+    podcast_id: str
+    podcast_name: str
+    feed_url: str
+    artwork_url: Optional[str] = None
+    is_active: bool = True
+    last_checked_at: Optional[str] = None
+    last_episode_date: Optional[str] = None
+    created_at: Optional[str] = None
+    total_episodes: int = 0
+    processed_episodes: int = 0
+
+
+class SubscriptionWithEpisodes(BaseModel):
+    """Subscription with its episodes list."""
+    subscription: Subscription
+    episodes: list[SubscriptionEpisode]
+    total_episodes: int
+
+
+class SubscriptionCreateRequest(BaseModel):
+    """Request to create a subscription."""
+    podcast_id: str
+    podcast_name: str
+    feed_url: str
+    artwork_url: Optional[str] = None
+
+
+class SubscriptionUpdateRequest(BaseModel):
+    """Request to update subscription."""
+    is_active: Optional[bool] = None
+
+
+class SubscriptionListResponse(BaseModel):
+    """List of subscriptions."""
+    subscriptions: list[Subscription]
+
+
+class BatchProcessRequest(BaseModel):
+    """Request to batch process episodes."""
+    episode_ids: list[int]  # Max 19
+
+
+class CheckEpisodesResponse(BaseModel):
+    """Response from checking for new episodes."""
+    new_episodes: int
+    auto_processed: int

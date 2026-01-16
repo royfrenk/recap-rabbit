@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Mic, Loader2, RotateCcw, Clock, Podcast } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { dateFormatters } from '@/lib/date'
 
 type StatusFilter = 'all' | 'completed' | 'processing' | 'failed'
 
@@ -20,18 +21,6 @@ const statusStyles: Record<string, { variant: 'default' | 'secondary' | 'destruc
   diarizing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
   cleaning: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
   summarizing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 function formatDuration(seconds: number | null): string {
@@ -174,7 +163,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {formatDate(episode.created_at)}
+                    {dateFormatters.activityTime(episode.created_at)}
                   </span>
                   {episode.status === 'failed' && (
                     <Button

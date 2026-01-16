@@ -16,16 +16,22 @@ print(f"Directory contents: {os.listdir('.')}", flush=True)
 
 try:
     print("Importing routers...", flush=True)
-    from app.routers import episodes, search, usage, auth, public
+    from app.routers import episodes, search, usage, auth, public, subscriptions
     print("Importing database...", flush=True)
     from app.db.database import init_database
     print("Importing repository...", flush=True)
     from app.db import repository
+    print("Importing scheduler...", flush=True)
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from apscheduler.triggers.interval import IntervalTrigger
     print("All imports successful", flush=True)
 except Exception as e:
     print(f"Import error: {e}", flush=True)
     traceback.print_exc()
     raise
+
+# Global scheduler instance
+scheduler = None
 
 # CORS origins - allow localhost, staging, and production domains
 CORS_ORIGINS = [
@@ -43,6 +49,8 @@ if os.getenv("CORS_ORIGINS"):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown."""
+    global scheduler
+
     try:
         # Startup
         print("Initializing database...", flush=True)
@@ -56,6 +64,24 @@ async def lifespan(app: FastAPI):
             for ep in incomplete:
                 print(f"  - {ep['title'] or ep['id']} (status: {ep['status']})", flush=True)
 
+        # Start subscription checker scheduler
+        print("Starting subscription checker scheduler...", flush=True)
+        scheduler = AsyncIOScheduler()
+
+        # Import the checker function
+        from app.services.subscription_checker import check_all_active_subscriptions
+
+        # Run every 6 hours
+        scheduler.add_job(
+            check_all_active_subscriptions,
+            trigger=IntervalTrigger(hours=6),
+            id="subscription_checker",
+            name="Check active subscriptions for new episodes",
+            replace_existing=True
+        )
+        scheduler.start()
+        print("Subscription checker scheduler started (runs every 6 hours)", flush=True)
+
         print("Startup complete, ready to serve requests", flush=True)
     except Exception as e:
         print(f"Startup error: {e}", flush=True)
@@ -63,7 +89,11 @@ async def lifespan(app: FastAPI):
         raise
 
     yield
-    # Shutdown (nothing needed)
+
+    # Shutdown
+    if scheduler:
+        print("Shutting down scheduler...", flush=True)
+        scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -86,6 +116,7 @@ app.include_router(episodes.router, prefix="/api/episodes", tags=["episodes"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
 app.include_router(public.router, prefix="/api/public", tags=["public"])
+app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["subscriptions"])
 
 
 @app.get("/health")

@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Home, History, BarChart3, LogOut, ChevronDown, User } from 'lucide-react'
+import { Home, History, BarChart3, LogOut, ChevronDown, User, Bell } from 'lucide-react'
 
 export default function Header() {
   const { user, isAdmin, logout, isLoading } = useAuth()
@@ -38,6 +38,12 @@ export default function Header() {
                 <Link href="/history" className="gap-2">
                   <History className="h-4 w-4" />
                   <span className="hidden sm:inline">History</span>
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/subscriptions" className="gap-2">
+                  <Bell className="h-4 w-4" />
+                  <span className="hidden sm:inline">Subscriptions</span>
                 </Link>
               </Button>
               {isAdmin && (

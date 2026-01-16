@@ -163,6 +163,60 @@ async def init_database():
             CREATE UNIQUE INDEX IF NOT EXISTS idx_episodes_slug ON episodes(slug) WHERE slug IS NOT NULL
         """)
 
+        # Subscriptions table - podcast subscriptions for auto-processing
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id),
+                podcast_id TEXT NOT NULL,
+                podcast_name TEXT NOT NULL,
+                feed_url TEXT NOT NULL,
+                artwork_url TEXT,
+                is_active INTEGER DEFAULT 1,
+                last_checked_at TIMESTAMP,
+                last_episode_date TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, podcast_id)
+            )
+        """)
+
+        # Index for user's subscriptions
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)
+        """)
+
+        # Index for active subscriptions (for scheduler)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON subscriptions(is_active, last_checked_at)
+        """)
+
+        # Subscription episodes table - tracks episodes for each subscription
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS subscription_episodes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subscription_id TEXT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+                episode_guid TEXT NOT NULL,
+                episode_title TEXT,
+                audio_url TEXT,
+                publish_date TIMESTAMP,
+                duration_seconds REAL,
+                episode_id TEXT REFERENCES episodes(id),
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(subscription_id, episode_guid)
+            )
+        """)
+
+        # Index for subscription episodes lookup
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_sub_episodes_subscription ON subscription_episodes(subscription_id)
+        """)
+
+        # Index for episode status filtering
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_sub_episodes_status ON subscription_episodes(status)
+        """)
+
         await db.commit()
 
         # Diagnostic: count existing records

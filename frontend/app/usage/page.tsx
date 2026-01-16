@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getUsageStats, UsageStats } from '@/lib/api'
+import { dateFormatters } from '@/lib/date'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft } from 'lucide-react'
@@ -30,15 +31,6 @@ function formatCost(cost: number): string {
   return `$${cost.toFixed(2)}`
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 export default function UsagePage() {
   const [stats, setStats] = useState<UsageStats | null>(null)
@@ -224,7 +216,7 @@ export default function UsagePage() {
                     <tbody>
                       {stats.recent_logs.slice(0, 20).map((log, i) => (
                         <tr key={i} className="border-b border-border/50">
-                          <td className="py-2 text-muted-foreground">{formatDate(log.created_at)}</td>
+                          <td className="py-2 text-muted-foreground">{dateFormatters.usageLog(log.created_at)}</td>
                           <td className="py-2">
                             <span className="inline-flex items-center gap-1.5">
                               <span className={`w-2 h-2 rounded-full ${

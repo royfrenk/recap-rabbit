@@ -120,6 +120,7 @@ export interface PodcastLookupResult {
   podcast_id?: string
   podcast_name?: string
   podcast_thumbnail?: string
+  feed_url?: string
   message?: string
 }
 
@@ -313,5 +314,144 @@ export async function getEpisodePublicStatus(episodeId: string): Promise<{
   slug: string | null
 }> {
   const response = await api.get(`/episodes/${episodeId}/public-status`)
+  return response.data
+}
+
+// ============ Subscription Types ============
+
+export type SubscriptionEpisodeStatus = 'pending' | 'processing' | 'completed' | 'skipped' | 'failed'
+
+export interface SubscriptionEpisode {
+  id: number
+  subscription_id: string
+  episode_guid: string
+  episode_title: string | null
+  audio_url: string | null
+  publish_date: string | null
+  duration_seconds: number | null
+  episode_id: string | null  // Linked processed episode
+  status: SubscriptionEpisodeStatus
+  created_at: string | null
+}
+
+export interface Subscription {
+  id: string
+  user_id: string
+  podcast_id: string
+  podcast_name: string
+  feed_url: string
+  artwork_url: string | null
+  is_active: boolean
+  last_checked_at: string | null
+  last_episode_date: string | null
+  created_at: string | null
+  total_episodes: number
+  processed_episodes: number
+}
+
+export interface SubscriptionWithEpisodes {
+  subscription: Subscription
+  episodes: SubscriptionEpisode[]
+  total_episodes: number
+}
+
+export interface SubscriptionCreateRequest {
+  podcast_id: string
+  podcast_name: string
+  feed_url: string
+  artwork_url?: string
+}
+
+export interface CheckEpisodesResponse {
+  new_episodes: number
+  auto_processed: number
+}
+
+// ============ Subscription API Functions ============
+
+export async function listSubscriptions(): Promise<{ subscriptions: Subscription[] }> {
+  const response = await api.get('/subscriptions')
+  return response.data
+}
+
+export async function createSubscription(data: SubscriptionCreateRequest): Promise<Subscription> {
+  const response = await api.post('/subscriptions', data)
+  return response.data
+}
+
+export async function getSubscription(
+  subscriptionId: string,
+  options?: {
+    status?: string
+    start_date?: string
+    end_date?: string
+    limit?: number
+    offset?: number
+  }
+): Promise<SubscriptionWithEpisodes> {
+  const params = new URLSearchParams()
+  if (options?.status) params.append('status', options.status)
+  if (options?.start_date) params.append('start_date', options.start_date)
+  if (options?.end_date) params.append('end_date', options.end_date)
+  if (options?.limit) params.append('limit', String(options.limit))
+  if (options?.offset) params.append('offset', String(options.offset))
+
+  const url = params.toString()
+    ? `/subscriptions/${subscriptionId}?${params.toString()}`
+    : `/subscriptions/${subscriptionId}`
+  const response = await api.get(url)
+  return response.data
+}
+
+export async function updateSubscription(
+  subscriptionId: string,
+  data: { is_active?: boolean }
+): Promise<Subscription> {
+  const response = await api.put(`/subscriptions/${subscriptionId}`, data)
+  return response.data
+}
+
+export async function deleteSubscription(subscriptionId: string): Promise<void> {
+  await api.delete(`/subscriptions/${subscriptionId}`)
+}
+
+export async function getSubscriptionEpisodes(
+  subscriptionId: string,
+  options?: {
+    status?: string
+    start_date?: string
+    end_date?: string
+    limit?: number
+    offset?: number
+  }
+): Promise<{ episodes: SubscriptionEpisode[]; total: number }> {
+  const params = new URLSearchParams()
+  if (options?.status) params.append('status', options.status)
+  if (options?.start_date) params.append('start_date', options.start_date)
+  if (options?.end_date) params.append('end_date', options.end_date)
+  if (options?.limit) params.append('limit', String(options.limit))
+  if (options?.offset) params.append('offset', String(options.offset))
+
+  const url = params.toString()
+    ? `/subscriptions/${subscriptionId}/episodes?${params.toString()}`
+    : `/subscriptions/${subscriptionId}/episodes`
+  const response = await api.get(url)
+  return response.data
+}
+
+export async function checkSubscriptionForNewEpisodes(
+  subscriptionId: string
+): Promise<CheckEpisodesResponse> {
+  const response = await api.post(`/subscriptions/${subscriptionId}/check`)
+  return response.data
+}
+
+export async function batchProcessEpisodes(
+  subscriptionId: string,
+  episodeIds: number[]
+): Promise<{ message: string; episode_count: number }> {
+  const response = await api.post(`/subscriptions/${subscriptionId}/process-batch`, {
+    episode_ids: episodeIds
+  })
   return response.data
 }
