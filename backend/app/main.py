@@ -11,10 +11,15 @@ load_dotenv()
 # Early startup logging
 print(f"Starting Recap Rabbit API...", flush=True)
 print(f"Python version: {sys.version}", flush=True)
+print(f"Current directory: {os.getcwd()}", flush=True)
+print(f"Directory contents: {os.listdir('.')}", flush=True)
 
 try:
+    print("Importing routers...", flush=True)
     from app.routers import episodes, search, usage, auth
+    print("Importing database...", flush=True)
     from app.db.database import init_database
+    print("Importing repository...", flush=True)
     from app.db import repository
     print("All imports successful", flush=True)
 except Exception as e:
