@@ -7,6 +7,13 @@ import FileUpload from '@/components/FileUpload'
 import { uploadEpisode, processUrl, searchPodcasts, SearchResult } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
+const POPULAR_SEARCHES = [
+  "Tim Ferriss productivity",
+  "Huberman Lab sleep",
+  "Lex Fridman AI",
+  "Joe Rogan science",
+]
+
 export default function Home() {
   const router = useRouter()
   const { user } = useAuth()
@@ -110,6 +117,21 @@ export default function Home() {
           onUrlSubmit={handleUrlSubmit}
           isLoading={isLoading}
         />
+
+        {/* Popular Searches */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-500">Popular:</span>
+          {POPULAR_SEARCHES.map((query) => (
+            <button
+              key={query}
+              onClick={() => handleSearch(query)}
+              disabled={isLoading}
+              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition disabled:opacity-50"
+            >
+              {query}
+            </button>
+          ))}
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
