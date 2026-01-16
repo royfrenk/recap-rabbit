@@ -4,7 +4,7 @@ import time
 import httpx
 from typing import Callable, Optional
 
-from app.db.repository import log_usage
+from app.db.repository import log_usage, get_transcription_time_ratio
 
 # AssemblyAI pricing
 ASSEMBLYAI_COST_PER_HOUR = 0.37  # $0.37/hour with speaker diarization
@@ -58,10 +58,13 @@ async def transcribe_audio(
         # Step 3: Poll for completion with progress tracking
         start_time = time.time()
 
-        # Estimate processing time: AssemblyAI typically processes at ~1x realtime
-        # Use 0.8x as baseline (48 seconds processing per 1 min audio)
-        duration_mins = (duration_seconds / 60) if duration_seconds else 10
-        estimated_seconds = duration_mins * 0.8 * 60  # Convert to seconds
+        # Get predicted processing ratio from historical data
+        # Falls back to 0.8 if no data available
+        predicted_ratio = await get_transcription_time_ratio()
+
+        # Estimate processing time based on historical ratio
+        duration_secs = duration_seconds if duration_seconds else 600  # Default 10 min
+        estimated_seconds = duration_secs * predicted_ratio
 
         while True:
             status_response = await client.get(
@@ -114,7 +117,8 @@ async def transcribe_audio(
             "speaker": utterance.get("speaker", None)
         })
 
-    # Log usage
+    # Log usage with actual processing time for prediction model
+    actual_processing_time = time.time() - start_time
     audio_hours = (duration_seconds or 0) / 3600
     cost = audio_hours * ASSEMBLYAI_COST_PER_HOUR
     await log_usage(
@@ -126,6 +130,7 @@ async def transcribe_audio(
         cost_usd=cost,
         metadata={
             "duration_seconds": duration_seconds,
+            "processing_seconds": actual_processing_time,  # For prediction model
             "language": result.get("language_code"),
             "speakers_count": len(set(u.get("speaker") for u in result.get("utterances", []) if u.get("speaker")))
         }

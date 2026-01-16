@@ -58,6 +58,44 @@ async def log_usage(
         await db.commit()
 
 
+async def get_transcription_time_ratio() -> float:
+    """
+    Calculate average processing time ratio from historical transcription data.
+    Returns ratio of processing_seconds / audio_seconds.
+    Falls back to 0.8 if no historical data available.
+    """
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT metadata FROM usage_logs
+            WHERE service = 'assemblyai' AND operation = 'transcription'
+            AND metadata IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 20
+        """) as cursor:
+            rows = await cursor.fetchall()
+
+            if not rows:
+                return 0.8  # Default fallback
+
+            ratios = []
+            for row in rows:
+                try:
+                    metadata = json.loads(row[0])
+                    duration = metadata.get('duration_seconds')
+                    processing_time = metadata.get('processing_seconds')
+                    if duration and processing_time and duration > 0:
+                        ratios.append(processing_time / duration)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            if not ratios:
+                return 0.8  # Default fallback
+
+            # Return average ratio, capped between 0.3 and 2.0
+            avg_ratio = sum(ratios) / len(ratios)
+            return max(0.3, min(2.0, avg_ratio))
+
+
 async def get_usage_stats(days: int = 30) -> Dict[str, Any]:
     """Get aggregated usage statistics."""
     async with get_db() as db:
