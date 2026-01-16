@@ -29,7 +29,7 @@ export default function Header() {
                 </Link>
               )}
               <div className="flex items-center gap-3 ml-4 pl-4 border-l">
-                <span className="text-sm text-gray-500">{user.email}</span>
+                <span className="text-sm text-gray-500">{user.name?.split(' ')[0] || user.email}</span>
                 <button
                   onClick={logout}
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium"

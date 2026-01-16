@@ -1,18 +1,25 @@
 """
 SQLite database connection and initialization.
 """
+import os
 import aiosqlite
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-DATABASE_PATH = Path(__file__).parent.parent.parent / "data" / "podcatchup.db"
+# Allow database path to be configured via environment variable
+DATABASE_PATH = Path(os.getenv("DATABASE_PATH", Path(__file__).parent.parent.parent / "data" / "podcatchup.db"))
 
 
 async def init_database():
     """Initialize the SQLite database with required tables."""
+    print(f"Database path: {DATABASE_PATH}", flush=True)
+    print(f"Creating directory: {DATABASE_PATH.parent}", flush=True)
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Directory created/exists", flush=True)
 
+    print(f"Connecting to database...", flush=True)
     async with aiosqlite.connect(DATABASE_PATH) as db:
+        print(f"Connected to database", flush=True)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS episodes (
                 id TEXT PRIMARY KEY,

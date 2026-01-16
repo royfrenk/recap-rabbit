@@ -1,4 +1,4 @@
-# PodCatchup
+# Recap Rabbit 🐰
 
 Get the "so what" of any podcast episode without listening to the whole thing.
 

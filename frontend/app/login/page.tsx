@@ -30,6 +30,36 @@ export default function LoginPage() {
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+  // Check if Google script is loaded (poll for it)
+  useEffect(() => {
+    if (!googleClientId) return
+
+    const checkGoogle = () => {
+      if (window.google) {
+        setGoogleLoaded(true)
+        return true
+      }
+      return false
+    }
+
+    // Check immediately
+    if (checkGoogle()) return
+
+    // Poll every 100ms for up to 5 seconds
+    const interval = setInterval(() => {
+      if (checkGoogle()) {
+        clearInterval(interval)
+      }
+    }, 100)
+
+    const timeout = setTimeout(() => clearInterval(interval), 5000)
+
+    return () => {
+      clearInterval(interval)
+      clearTimeout(timeout)
+    }
+  }, [googleClientId])
+
   // Initialize Google Sign-In
   useEffect(() => {
     if (googleLoaded && googleClientId && window.google) {
