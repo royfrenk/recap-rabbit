@@ -27,10 +27,11 @@ except Exception as e:
     traceback.print_exc()
     raise
 
-# CORS origins - allow localhost and production domain
+# CORS origins - allow localhost, staging, and production domains
 CORS_ORIGINS = [
     "http://localhost:3000",
     "https://localhost:3000",
+    "https://staging.recaprabbit.com",
     "https://recaprabbit.com",
     "https://www.recaprabbit.com",
 ]
