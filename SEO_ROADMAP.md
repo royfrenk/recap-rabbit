@@ -24,14 +24,15 @@ Each processed episode = a new page that can rank for "[podcast] [episode] summa
 ---
 
 ## Phase 1: Technical Foundation
-**Status**: 🔄 In Progress
+**Status**: ✅ Complete
 
-- [ ] Add meta tags to all pages (title, description, OG tags)
-- [ ] Create dynamic sitemap.xml
-- [ ] Add robots.txt
-- [ ] Add JSON-LD schema markup
-- [ ] Connect Google Search Console (manual)
-- [ ] Connect Google Analytics 4 (manual)
+- [x] Add meta tags to all pages (title, description, OG tags)
+- [x] Create dynamic sitemap.xml
+- [x] Add robots.txt
+- [x] Add JSON-LD schema markup
+- [ ] Connect Google Search Console (manual - do in browser)
+- [ ] Connect Google Analytics 4 (manual - do in browser)
+- [ ] Create OG image (/public/og-image.png)
 
 ## Phase 2: Public Summary Pages
 **Status**: ⏳ Planned
