@@ -250,7 +250,7 @@ def generate_pdf(
     ))
 
     styles.add(ParagraphStyle(
-        name='BodyText',
+        name='RRBodyText',
         fontSize=11,
         spaceAfter=8,
         fontName='Helvetica',
@@ -308,7 +308,7 @@ def generate_pdf(
         story.append(SectionHeading("Summary", content_width))
         story.append(Spacer(1, 0.15 * inch))
         safe_paragraph = episode.summary.paragraph.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        story.append(Paragraph(safe_paragraph, styles['BodyText']))
+        story.append(Paragraph(safe_paragraph, styles['RRBodyText']))
         story.append(Spacer(1, 0.25 * inch))
 
     # Key Takeaways section
