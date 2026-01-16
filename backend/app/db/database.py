@@ -115,6 +115,23 @@ async def init_database():
             CREATE INDEX IF NOT EXISTS idx_usage_service ON usage_logs(service, created_at)
         """)
 
+        # Search logs table for tracking popular searches
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS search_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query TEXT NOT NULL,
+                user_id TEXT,
+                results_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
+        # Index for popular searches aggregation
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_search_query ON search_logs(query, created_at)
+        """)
+
         await db.commit()
 
 

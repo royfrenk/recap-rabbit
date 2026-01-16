@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import FileUpload from '@/components/FileUpload'
-import { uploadEpisode, processUrl, searchPodcasts, SearchResult } from '@/lib/api'
+import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, SearchResult } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
-const POPULAR_SEARCHES = [
+const DEFAULT_POPULAR_SEARCHES = [
   "Tim Ferriss productivity",
   "Huberman Lab sleep",
   "Lex Fridman AI",
@@ -20,6 +20,27 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [showSearch, setShowSearch] = useState(false)
+  const [popularSearches, setPopularSearches] = useState<string[]>(DEFAULT_POPULAR_SEARCHES)
+
+  // Fetch popular searches on mount
+  useEffect(() => {
+    const fetchPopular = async () => {
+      try {
+        const searches = await getPopularSearches()
+        if (searches && searches.length > 0) {
+          // Capitalize first letter of each word for display
+          const formatted = searches.map((s: string) =>
+            s.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+          )
+          setPopularSearches(formatted)
+        }
+      } catch (error) {
+        console.error('Failed to fetch popular searches:', error)
+        // Keep default searches on error
+      }
+    }
+    fetchPopular()
+  }, [])
 
   const handleSearch = async (query: string) => {
     setIsLoading(true)
@@ -121,7 +142,7 @@ export default function Home() {
         {/* Popular Searches */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-500">Popular:</span>
-          {POPULAR_SEARCHES.map((query) => (
+          {popularSearches.map((query) => (
             <button
               key={query}
               onClick={() => handleSearch(query)}

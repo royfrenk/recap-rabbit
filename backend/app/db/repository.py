@@ -96,6 +96,41 @@ async def get_transcription_time_ratio() -> float:
             return max(0.3, min(2.0, avg_ratio))
 
 
+async def log_search(query: str, user_id: Optional[str] = None, results_count: int = 0) -> None:
+    """Log a search query for tracking popular searches."""
+    # Normalize query: lowercase and strip whitespace
+    normalized_query = query.lower().strip()
+    if not normalized_query:
+        return
+
+    async with get_db() as db:
+        await db.execute("""
+            INSERT INTO search_logs (query, user_id, results_count, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (normalized_query, user_id, results_count, datetime.utcnow().isoformat()))
+        await db.commit()
+
+
+async def get_popular_searches(limit: int = 6, days: int = 30) -> List[str]:
+    """
+    Get the most popular search queries from the last N days.
+    Returns list of search queries ordered by frequency.
+    """
+    async with get_db() as db:
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+        async with db.execute("""
+            SELECT query, COUNT(*) as search_count
+            FROM search_logs
+            WHERE created_at >= ?
+            GROUP BY query
+            ORDER BY search_count DESC
+            LIMIT ?
+        """, (cutoff, limit)) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
+
+
 async def get_usage_stats(days: int = 30) -> Dict[str, Any]:
     """Get aggregated usage statistics."""
     async with get_db() as db:

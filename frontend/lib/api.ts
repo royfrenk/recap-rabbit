@@ -164,6 +164,11 @@ export async function searchPodcasts(query: string, limit: number = 10): Promise
   return response.data
 }
 
+export async function getPopularSearches(limit: number = 6): Promise<string[]> {
+  const response = await api.get('/search/popular', { params: { limit } })
+  return response.data
+}
+
 export async function getEpisodeHistory(
   status?: string,
   limit: number = 50,
