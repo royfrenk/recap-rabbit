@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Header() {
   const { user, isAdmin, logout, isLoading } = useAuth()
@@ -10,7 +11,7 @@ export default function Header() {
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-3xl">🐰</span>
+          <Image src="/logo-minimal.png" alt="Recap Rabbit" width={40} height={40} />
           <span className="text-xl font-bold text-gray-900">Recap Rabbit</span>
         </Link>
 

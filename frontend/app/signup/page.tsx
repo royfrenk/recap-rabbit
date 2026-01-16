@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Script from 'next/script'
+import Image from 'next/image'
 import { useAuth } from '@/lib/auth'
 
 declare global {
@@ -125,7 +126,7 @@ export default function SignupPage() {
       <div className="max-w-md mx-auto mt-8">
         <div className="bg-white rounded-lg shadow p-8">
           <div className="text-center mb-8">
-            <span className="text-5xl">🐰</span>
+            <Image src="/logo-minimal.png" alt="Recap Rabbit" width={80} height={80} className="mx-auto" />
             <h1 className="text-2xl font-bold text-gray-900 mt-4">Create Account</h1>
             <p className="text-gray-600 mt-2">Join Recap Rabbit to get podcast summaries</p>
           </div>
