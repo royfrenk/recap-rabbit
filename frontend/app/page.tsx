@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import FileUpload from '@/components/FileUpload'
+import HeroSection from '@/components/HeroSection'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, SearchResult } from '@/lib/api'
@@ -126,15 +127,7 @@ export default function Home() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Hero Section */}
-      <div className="text-center mb-10">
-        <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-          Get the <span className="text-primary">&ldquo;So What&rdquo;</span> of Any Podcast
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Transcribe and summarize any podcast episode. Get key takeaways and quotes without listening to the whole thing.
-        </p>
-      </div>
+      <HeroSection />
 
       <div className="space-y-6">
         <SearchBar

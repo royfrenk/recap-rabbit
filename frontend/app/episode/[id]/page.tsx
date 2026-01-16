@@ -121,17 +121,16 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
       )}
 
       {isProcessing && (
-        <Card className="mb-6">
-          <CardContent className="p-8">
-            <ProcessingStatus
-              status={episode.status}
-              progress={episode.progress}
-              error={episode.error}
-              statusMessage={episode.status_message}
-              durationSeconds={episode.duration_seconds}
-            />
-          </CardContent>
-        </Card>
+        <div className="mb-6">
+          <ProcessingStatus
+            status={episode.status}
+            progress={episode.progress}
+            error={episode.error}
+            statusMessage={episode.status_message}
+            durationSeconds={episode.duration_seconds}
+            title={episode.title}
+          />
+        </div>
       )}
 
       {episode.status === 'failed' && (
