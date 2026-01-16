@@ -4,7 +4,15 @@ import { useAuth } from '@/lib/auth'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Home, History, BarChart3, LogOut } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Home, History, BarChart3, LogOut, ChevronDown, User } from 'lucide-react'
 
 export default function Header() {
   const { user, isAdmin, logout, isLoading } = useAuth()
@@ -40,15 +48,31 @@ export default function Header() {
                   </Link>
                 </Button>
               )}
-              <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-                <span className="text-sm text-muted-foreground hidden sm:inline">
-                  {user.name?.split(' ')[0] || user.email}
-                </span>
-                <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 ml-2">
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      {user.name?.split(' ')[0] || user.email}
+                    </span>
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             !isLoading && (
