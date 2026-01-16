@@ -2,6 +2,17 @@
 
 import { useState } from 'react'
 import { exportPDF } from '@/lib/api'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Download, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ExportModalProps {
   episodeId: string
@@ -48,8 +59,6 @@ export default function ExportModal({ episodeId, episodeTitle, isOpen, onClose }
     }
   }
 
-  if (!isOpen) return null
-
   const checkboxes = [
     { key: 'includeSummary', label: 'Summary', description: 'Main summary paragraph' },
     { key: 'includeTakeaways', label: 'Key Takeaways', description: 'Bullet point insights' },
@@ -60,81 +69,56 @@ export default function ExportModal({ episodeId, episodeTitle, isOpen, onClose }
   const anySelected = Object.values(options).some(Boolean)
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Export to PDF</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <p className="text-sm text-gray-600 mb-6">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Export to PDF</DialogTitle>
+          <DialogDescription>
             Select the sections to include in your PDF:
-          </p>
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="space-y-4 mb-6">
-            {checkboxes.map(({ key, label, description }) => (
-              <label
-                key={key}
-                className="flex items-start gap-3 cursor-pointer group"
-              >
-                <input
-                  type="checkbox"
-                  checked={options[key as keyof typeof options]}
-                  onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
-                  className="mt-1 w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
-                <div>
-                  <span className="text-gray-900 font-medium group-hover:text-primary-600 transition">
-                    {label}
-                  </span>
-                  <p className="text-sm text-gray-500">{description}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition font-medium"
-              disabled={isExporting}
+        <div className="space-y-4 py-4">
+          {checkboxes.map(({ key, label, description }) => (
+            <label
+              key={key}
+              className="flex items-start gap-3 cursor-pointer group"
             >
-              Cancel
-            </button>
-            <button
-              onClick={handleExport}
-              disabled={isExporting || !anySelected}
-              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export PDF
-                </>
-              )}
-            </button>
-          </div>
+              <input
+                type="checkbox"
+                checked={options[key as keyof typeof options]}
+                onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
+                className="mt-1 w-4 h-4 text-primary rounded border-input focus:ring-primary"
+              />
+              <div>
+                <span className="text-foreground font-medium group-hover:text-primary transition">
+                  {label}
+                </span>
+                <p className="text-sm text-muted-foreground">{description}</p>
+              </div>
+            </label>
+          ))}
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={isExporting}>
+            Cancel
+          </Button>
+          <Button onClick={handleExport} disabled={isExporting || !anySelected}>
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

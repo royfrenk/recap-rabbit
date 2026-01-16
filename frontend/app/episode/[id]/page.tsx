@@ -9,7 +9,11 @@ import TranscriptView from '@/components/TranscriptView'
 import ExportModal from '@/components/ExportModal'
 import AudioPlayer, { AudioPlayerRef } from '@/components/AudioPlayer'
 import SpeakerOverridePanel from '@/components/SpeakerOverridePanel'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { getEpisode, getEpisodeStatus, EpisodeResult, TranscriptSegment, RTL_LANGUAGES } from '@/lib/api'
+import { ArrowLeft, Users, Download, Clock, Podcast } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function EpisodePage({ params }: { params: { id: string } }) {
   const { id } = params
@@ -75,7 +79,7 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
   if (!episode) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     )
   }
@@ -87,53 +91,63 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => router.push('/')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="gap-2 mb-6 -ml-2"
       >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft className="h-4 w-4" />
         Back to search
-      </button>
+      </Button>
 
       {episode.title && (
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{episode.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{episode.title}</h1>
           {episode.podcast_name && (
-            <p className="text-gray-600">{episode.podcast_name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Podcast className="h-4 w-4 text-muted-foreground" />
+              <p className="text-muted-foreground">{episode.podcast_name}</p>
+            </div>
           )}
           {episode.duration_seconds && (
-            <p className="text-sm text-gray-400 mt-1">
-              {Math.round(episode.duration_seconds / 60)} minutes
-            </p>
+            <div className="flex items-center gap-1 mt-1">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {Math.round(episode.duration_seconds / 60)} minutes
+              </p>
+            </div>
           )}
         </div>
       )}
 
       {isProcessing && (
-        <div className="bg-white rounded-lg shadow p-8">
-          <ProcessingStatus
-            status={episode.status}
-            progress={episode.progress}
-            error={episode.error}
-            statusMessage={episode.status_message}
-            durationSeconds={episode.duration_seconds}
-          />
-        </div>
+        <Card className="mb-6">
+          <CardContent className="p-8">
+            <ProcessingStatus
+              status={episode.status}
+              progress={episode.progress}
+              error={episode.error}
+              statusMessage={episode.status_message}
+              durationSeconds={episode.duration_seconds}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {episode.status === 'failed' && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-red-800 font-semibold mb-2">Processing Failed</h2>
-          <p className="text-red-600">{episode.error || 'An unknown error occurred'}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition"
-          >
-            Try Again
-          </button>
-        </div>
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-6">
+            <h2 className="text-destructive font-semibold mb-2">Processing Failed</h2>
+            <p className="text-destructive/80">{episode.error || 'An unknown error occurred'}</p>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/')}
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {episode.status === 'completed' && episode.summary && (
@@ -149,54 +163,46 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          <div className="border-b border-gray-200 mb-6">
+          <div className="border-b mb-6">
             <div className="flex items-center justify-between">
-              <nav className="flex gap-8">
-                <button
+              <nav className="flex gap-1">
+                <Button
+                  variant={activeTab === 'summary' ? 'default' : 'ghost'}
                   onClick={() => setActiveTab('summary')}
-                  className={`pb-4 text-sm font-medium border-b-2 transition ${
-                    activeTab === 'summary'
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className="rounded-b-none"
                 >
                   Summary
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant={activeTab === 'transcript' ? 'default' : 'ghost'}
                   onClick={() => setActiveTab('transcript')}
-                  className={`pb-4 text-sm font-medium border-b-2 transition ${
-                    activeTab === 'transcript'
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className="rounded-b-none"
                 >
                   Full Transcript
-                </button>
+                </Button>
               </nav>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pb-2">
                 {episode.transcript && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setShowSpeakerPanel(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition text-sm font-medium"
+                    className="gap-2"
                     title="Edit speaker names"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+                    <Users className="h-4 w-4" />
                     Edit Speakers
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setShowExportModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition text-sm font-medium"
+                  className="gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <Download className="h-4 w-4" />
                   Export PDF
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -206,25 +212,27 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
               {/* Language Toggle for bilingual content */}
               {hasBilingualContent && (
                 <div className="flex items-center justify-end gap-2">
-                  <span className="text-sm text-gray-500">Language:</span>
-                  <div className="flex bg-gray-100 rounded-lg p-1">
+                  <span className="text-sm text-muted-foreground">Language:</span>
+                  <div className="flex bg-muted rounded-lg p-1">
                     <button
                       onClick={() => setShowEnglish(false)}
-                      className={`px-3 py-1 text-sm rounded-md transition ${
+                      className={cn(
+                        "px-3 py-1 text-sm rounded-md transition",
                         !showEnglish
-                          ? 'bg-white shadow text-gray-900'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
+                          ? 'bg-background shadow text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
                     >
                       Original
                     </button>
                     <button
                       onClick={() => setShowEnglish(true)}
-                      className={`px-3 py-1 text-sm rounded-md transition ${
+                      className={cn(
+                        "px-3 py-1 text-sm rounded-md transition",
                         showEnglish
-                          ? 'bg-white shadow text-gray-900'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
+                          ? 'bg-background shadow text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
                     >
                       English
                     </button>

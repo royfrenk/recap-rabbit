@@ -3,22 +3,25 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getUsageStats, UsageStats } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Loader2, ArrowLeft } from 'lucide-react'
 
-const SERVICE_LABELS: Record<string, { name: string; unit: string; color: string }> = {
+const SERVICE_LABELS: Record<string, { name: string; unit: string; colorClass: string }> = {
   assemblyai: {
     name: 'AssemblyAI',
     unit: 'audio hours',
-    color: 'bg-blue-500'
+    colorClass: 'bg-blue-500'
   },
   anthropic: {
     name: 'Anthropic Claude',
     unit: 'tokens',
-    color: 'bg-purple-500'
+    colorClass: 'bg-primary'
   },
   listennotes: {
     name: 'Listen Notes',
     unit: 'API calls',
-    color: 'bg-green-500'
+    colorClass: 'bg-green-500'
   }
 }
 
@@ -61,28 +64,28 @@ export default function UsagePage() {
   }, [days])
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">API Usage</h1>
-          <p className="text-gray-600 mt-1">Track your API costs and usage</p>
+          <h1 className="text-3xl font-bold text-foreground">API Usage</h1>
+          <p className="text-muted-foreground mt-1">Track your API costs and usage</p>
         </div>
-        <Link
-          href="/"
-          className="text-blue-600 hover:text-blue-800 font-medium"
-        >
-          Back to Home
-        </Link>
+        <Button variant="ghost" asChild>
+          <Link href="/" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
+        </Button>
       </div>
 
       {/* Period Selector */}
       <div className="mb-6">
-        <label className="text-sm font-medium text-gray-700 mr-3">Time period:</label>
+        <label className="text-sm font-medium text-foreground mr-3">Time period:</label>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-ring"
         >
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>
@@ -93,20 +96,24 @@ export default function UsagePage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading usage data...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading usage data...</span>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {error}
-        </div>
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-4 text-destructive">
+            {error}
+          </CardContent>
+        </Card>
       ) : stats ? (
         <div className="space-y-8">
           {/* Total Cost Card */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-            <h2 className="text-lg font-medium opacity-90">Total Cost ({days} days)</h2>
-            <p className="text-4xl font-bold mt-2">${stats.total_cost_usd.toFixed(2)}</p>
-          </div>
+          <Card className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground border-0">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-medium opacity-90">Total Cost ({days} days)</h2>
+              <p className="text-4xl font-bold mt-2">${stats.total_cost_usd.toFixed(2)}</p>
+            </CardContent>
+          </Card>
 
           {/* Service Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -114,142 +121,156 @@ export default function UsagePage() {
               const config = SERVICE_LABELS[service] || {
                 name: service,
                 unit: 'units',
-                color: 'bg-gray-500'
+                colorClass: 'bg-muted'
               }
               return (
-                <div key={service} className="bg-white rounded-lg border border-gray-200 p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-3 h-3 rounded-full ${config.color}`}></div>
-                    <h3 className="font-semibold text-gray-900">{config.name}</h3>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">API Calls</span>
-                      <span className="font-medium">{usage.calls}</span>
+                <Card key={service}>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-3 h-3 rounded-full ${config.colorClass}`}></div>
+                      <h3 className="font-semibold text-foreground">{config.name}</h3>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Input ({config.unit})</span>
-                      <span className="font-medium">
-                        {service === 'assemblyai'
-                          ? usage.input_units.toFixed(2)
-                          : usage.input_units.toLocaleString()}
-                      </span>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">API Calls</span>
+                        <span className="font-medium">{usage.calls}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Input ({config.unit})</span>
+                        <span className="font-medium">
+                          {service === 'assemblyai'
+                            ? usage.input_units.toFixed(2)
+                            : usage.input_units.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Output</span>
+                        <span className="font-medium">{usage.output_units.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t">
+                        <span className="font-medium">Cost</span>
+                        <span className="font-bold text-primary">{formatCost(usage.cost_usd)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Output</span>
-                      <span className="font-medium">{usage.output_units.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="text-gray-700 font-medium">Cost</span>
-                      <span className="font-bold text-blue-600">{formatCost(usage.cost_usd)}</span>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )
             })}
           </div>
 
           {/* Daily Breakdown */}
           {Object.keys(stats.daily).length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">Daily Breakdown</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 text-gray-600 font-medium">Date</th>
-                      {Object.keys(SERVICE_LABELS).map(service => (
-                        <th key={service} className="text-right py-2 text-gray-600 font-medium">
-                          {SERVICE_LABELS[service].name}
-                        </th>
-                      ))}
-                      <th className="text-right py-2 text-gray-600 font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(stats.daily)
-                      .sort(([a], [b]) => b.localeCompare(a))
-                      .slice(0, 14)
-                      .map(([date, dayStats]) => (
-                        <tr key={date} className="border-b border-gray-100">
-                          <td className="py-2 text-gray-900">{date}</td>
-                          {Object.keys(SERVICE_LABELS).map(service => (
-                            <td key={service} className="text-right py-2">
-                              {dayStats.by_service[service]
-                                ? formatCost(dayStats.by_service[service])
-                                : '-'}
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 text-muted-foreground font-medium">Date</th>
+                        {Object.keys(SERVICE_LABELS).map(service => (
+                          <th key={service} className="text-right py-2 text-muted-foreground font-medium">
+                            {SERVICE_LABELS[service].name}
+                          </th>
+                        ))}
+                        <th className="text-right py-2 text-muted-foreground font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(stats.daily)
+                        .sort(([a], [b]) => b.localeCompare(a))
+                        .slice(0, 14)
+                        .map(([date, dayStats]) => (
+                          <tr key={date} className="border-b border-border/50">
+                            <td className="py-2 text-foreground">{date}</td>
+                            {Object.keys(SERVICE_LABELS).map(service => (
+                              <td key={service} className="text-right py-2 text-muted-foreground">
+                                {dayStats.by_service[service]
+                                  ? formatCost(dayStats.by_service[service])
+                                  : '-'}
+                              </td>
+                            ))}
+                            <td className="text-right py-2 font-medium text-primary">
+                              {formatCost(dayStats.total)}
                             </td>
-                          ))}
-                          <td className="text-right py-2 font-medium text-blue-600">
-                            {formatCost(dayStats.total)}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Recent Activity */}
           {stats.recent_logs.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">Recent API Calls</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 text-gray-600 font-medium">Time</th>
-                      <th className="text-left py-2 text-gray-600 font-medium">Service</th>
-                      <th className="text-left py-2 text-gray-600 font-medium">Operation</th>
-                      <th className="text-right py-2 text-gray-600 font-medium">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recent_logs.slice(0, 20).map((log, i) => (
-                      <tr key={i} className="border-b border-gray-100">
-                        <td className="py-2 text-gray-600">{formatDate(log.created_at)}</td>
-                        <td className="py-2">
-                          <span className={`inline-flex items-center gap-1.5`}>
-                            <span className={`w-2 h-2 rounded-full ${
-                              SERVICE_LABELS[log.service]?.color || 'bg-gray-400'
-                            }`}></span>
-                            {SERVICE_LABELS[log.service]?.name || log.service}
-                          </span>
-                        </td>
-                        <td className="py-2 text-gray-700 capitalize">{log.operation}</td>
-                        <td className="text-right py-2 font-medium">
-                          {formatCost(log.cost_usd)}
-                        </td>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent API Calls</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 text-muted-foreground font-medium">Time</th>
+                        <th className="text-left py-2 text-muted-foreground font-medium">Service</th>
+                        <th className="text-left py-2 text-muted-foreground font-medium">Operation</th>
+                        <th className="text-right py-2 text-muted-foreground font-medium">Cost</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </thead>
+                    <tbody>
+                      {stats.recent_logs.slice(0, 20).map((log, i) => (
+                        <tr key={i} className="border-b border-border/50">
+                          <td className="py-2 text-muted-foreground">{formatDate(log.created_at)}</td>
+                          <td className="py-2">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${
+                                SERVICE_LABELS[log.service]?.colorClass || 'bg-muted'
+                              }`}></span>
+                              {SERVICE_LABELS[log.service]?.name || log.service}
+                            </span>
+                          </td>
+                          <td className="py-2 text-muted-foreground capitalize">{log.operation}</td>
+                          <td className="text-right py-2 font-medium">
+                            {formatCost(log.cost_usd)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Pricing Info */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">Pricing Reference</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-700">AssemblyAI:</span>
-                <span className="text-gray-600 ml-2">$0.37/hour (with speaker diarization)</span>
+          <Card className="bg-muted/50">
+            <CardHeader>
+              <CardTitle className="text-base">Pricing Reference</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-foreground">AssemblyAI:</span>
+                  <span className="text-muted-foreground ml-2">$0.37/hour (with speaker diarization)</span>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Claude Sonnet:</span>
+                  <span className="text-muted-foreground ml-2">$3/M input, $15/M output tokens</span>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Listen Notes:</span>
+                  <span className="text-muted-foreground ml-2">Free tier</span>
+                </div>
               </div>
-              <div>
-                <span className="font-medium text-gray-700">Claude Sonnet:</span>
-                <span className="text-gray-600 ml-2">$3/M input, $15/M output tokens</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Listen Notes:</span>
-                <span className="text-gray-600 ml-2">Free tier</span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
-        <div className="text-center py-12 text-gray-600">
+        <div className="text-center py-12 text-muted-foreground">
           No usage data available yet. Process some episodes to see your API usage.
         </div>
       )}

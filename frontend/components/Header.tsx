@@ -3,58 +3,63 @@
 import { useAuth } from '@/lib/auth'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Home, History, BarChart3, LogOut } from 'lucide-react'
 
 export default function Header() {
   const { user, isAdmin, logout, isLoading } = useAuth()
 
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo-minimal.png" alt="Recap Rabbit" width={40} height={40} />
-          <span className="text-xl font-bold text-gray-900">Recap Rabbit</span>
+    <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Image src="/logo-minimal.png" alt="Recap Rabbit" width={36} height={36} />
+          <span className="text-xl font-bold text-foreground">Recap Rabbit</span>
         </Link>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-2">
           {user ? (
             <>
-              <Link href="/" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
-                Home
-              </Link>
-              <Link href="/history" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
-                History
-              </Link>
-              {isAdmin && (
-                <Link href="/usage" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition">
-                  Usage
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/" className="gap-2">
+                  <Home className="h-4 w-4" />
+                  <span className="hidden sm:inline">Home</span>
                 </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/history" className="gap-2">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">History</span>
+                </Link>
+              </Button>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/usage" className="gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Usage</span>
+                  </Link>
+                </Button>
               )}
-              <div className="flex items-center gap-3 ml-4 pl-4 border-l">
-                <span className="text-sm text-gray-500">{user.name?.split(' ')[0] || user.email}</span>
-                <button
-                  onClick={logout}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  Logout
-                </button>
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  {user.name?.split(' ')[0] || user.email}
+                </span>
+                <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
             </>
           ) : (
             !isLoading && (
-              <>
-                <Link
-                  href="/login"
-                  className="text-gray-600 hover:text-gray-900 text-sm font-medium transition"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
-                >
-                  Sign Up
-                </Link>
-              </>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/login">Login</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </div>
             )
           )}
         </nav>

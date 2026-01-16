@@ -3,18 +3,23 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getEpisodeHistory, resumeEpisode, EpisodeListItem } from '@/lib/api'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Mic, Loader2, RotateCcw, Clock, Podcast } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type StatusFilter = 'all' | 'completed' | 'processing' | 'failed'
 
-const statusStyles: Record<string, string> = {
-  completed: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
-  pending: 'bg-yellow-100 text-yellow-800',
-  downloading: 'bg-blue-100 text-blue-800',
-  transcribing: 'bg-blue-100 text-blue-800',
-  diarizing: 'bg-blue-100 text-blue-800',
-  cleaning: 'bg-blue-100 text-blue-800',
-  summarizing: 'bg-blue-100 text-blue-800',
+const statusStyles: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
+  completed: { variant: 'default', className: 'bg-green-100 text-green-800 border-green-200' },
+  failed: { variant: 'destructive' },
+  pending: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  downloading: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+  transcribing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+  diarizing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+  cleaning: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+  summarizing: { variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-200' },
 }
 
 function formatDate(dateStr: string | null): string {
@@ -77,11 +82,11 @@ export default function HistoryPage() {
     return (
       <div className="flex items-center gap-2">
         {isProcessing && (
-          <span className="text-xs text-gray-500">{progress}%</span>
+          <span className="text-xs text-muted-foreground">{progress}%</span>
         )}
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${style}`}>
+        <Badge variant={style.variant} className={style.className}>
           {status}
-        </span>
+        </Badge>
       </div>
     )
   }
@@ -97,108 +102,100 @@ export default function HistoryPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Processing History</h1>
-          <p className="text-sm text-gray-500 mt-1">{total} episode{total !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-foreground">Processing History</h1>
+          <p className="text-sm text-muted-foreground mt-1">{total} episode{total !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => router.push('/')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+        <Button onClick={() => router.push('/')} className="gap-2">
+          <Plus className="h-4 w-4" />
           New Episode
-        </button>
+        </Button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 pb-4">
+      <div className="flex gap-2 mb-6 border-b pb-4">
         {filterTabs.map(({ key, label }) => (
-          <button
+          <Button
             key={key}
+            variant={filter === key ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => setFilter(key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-              filter === key
-                ? 'bg-primary-100 text-primary-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {/* Episode List */}
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading...</p>
         </div>
       ) : episodes.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          <p className="text-gray-500 mb-4">No episodes found</p>
-          <button
-            onClick={() => router.push('/')}
-            className="text-primary-600 hover:underline font-medium"
-          >
-            Process your first episode
-          </button>
-        </div>
+        <Card>
+          <CardContent className="text-center py-12">
+            <Mic className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4">No episodes found</p>
+            <Button variant="link" onClick={() => router.push('/')}>
+              Process your first episode
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
           {episodes.map((episode) => (
-            <div
+            <Card
               key={episode.id}
               onClick={() => router.push(`/episode/${episode.id}`)}
-              className="bg-white rounded-lg shadow hover:shadow-md transition cursor-pointer"
+              className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
             >
-              <div className="p-4">
+              <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
+                    <h3 className="font-medium text-foreground truncate">
                       {episode.title || 'Untitled Episode'}
                     </h3>
-                    <p className="text-sm text-gray-500 truncate">
-                      {episode.podcast_name || 'Unknown Podcast'}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Podcast className="h-3 w-3 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground truncate">
+                        {episode.podcast_name || 'Unknown Podcast'}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {episode.duration_seconds && (
-                      <span className="text-sm text-gray-400">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Clock className="h-3 w-3" />
                         {formatDuration(episode.duration_seconds)}
-                      </span>
+                      </div>
                     )}
                     {getStatusBadge(episode.status, episode.progress)}
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     {formatDate(episode.created_at)}
                   </span>
                   {episode.status === 'failed' && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={(e) => handleResume(e, episode.id)}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                      className="gap-1 h-auto py-1 text-xs"
                     >
+                      <RotateCcw className="h-3 w-3" />
                       Retry
-                    </button>
+                    </Button>
                   )}
                   {!['completed', 'failed'].includes(episode.status) && (
-                    <span className="text-xs text-blue-600 flex items-center gap-1">
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                    <span className="text-xs text-primary flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
                       Processing
                     </span>
                   )}
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

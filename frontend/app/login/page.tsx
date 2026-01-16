@@ -6,6 +6,10 @@ import Link from 'next/link'
 import Script from 'next/script'
 import Image from 'next/image'
 import { useAuth } from '@/lib/auth'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 
 declare global {
   interface Window {
@@ -123,83 +127,85 @@ export default function LoginPage() {
         />
       )}
       <div className="max-w-md mx-auto mt-8">
-        <div className="bg-white rounded-lg shadow p-8">
-          <div className="text-center mb-8">
+        <Card>
+          <CardHeader className="text-center">
             <Image src="/logo-minimal.png" alt="Recap Rabbit" width={80} height={80} className="mx-auto" />
-            <h1 className="text-2xl font-bold text-gray-900 mt-4">Welcome Back</h1>
-            <p className="text-gray-600 mt-2">Sign in to your Recap Rabbit account</p>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          {googleClientId && (
-            <>
-              <div id="google-signin-button" className="w-full mb-4"></div>
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or continue with email</span>
-                </div>
+            <CardTitle className="mt-4">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your Recap Rabbit account</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-sm">
+                {error}
               </div>
-            </>
-          )}
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
+            {googleClientId && (
+              <>
+                <div id="google-signin-button" className="w-full mb-4"></div>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-card text-muted-foreground">or continue with email</span>
+                  </div>
+                </div>
+              </>
+            )}
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Your password"
-              required
-            />
-          </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50"
-          >
-            {isLoading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                  Password
+                </label>
+                <Input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  required
+                />
+              </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/signup" className="text-primary-600 hover:text-primary-700 font-medium">
-              Sign up
-            </Link>
-          </p>
-        </div>
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-muted-foreground">
+                Don't have an account?{' '}
+                <Link href="/signup" className="text-primary hover:underline font-medium">
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
     </>
   )
 }

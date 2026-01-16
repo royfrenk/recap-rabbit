@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Search, Loader2 } from 'lucide-react'
 
 interface SearchBarProps {
   onSearch: (query: string) => void
@@ -24,35 +27,30 @@ export default function SearchBar({ onSearch, onUrlSubmit, isLoading }: SearchBa
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative">
-        <input
+      <div className="relative flex items-center">
+        <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
+        <Input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Search podcasts or paste an episode URL..."
-          className="w-full px-4 py-3 pl-12 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+          className="h-14 pl-12 pr-24 text-lg rounded-xl border-2 focus-visible:ring-primary focus-visible:border-primary"
           disabled={isLoading}
         />
-        <svg
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-        <button
+        <Button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="absolute right-2 h-10 px-6"
         >
-          {isLoading ? 'Loading...' : 'Go'}
-        </button>
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading...
+            </>
+          ) : (
+            'Go'
+          )}
+        </Button>
       </div>
     </form>
   )

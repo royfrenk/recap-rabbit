@@ -1,6 +1,10 @@
 'use client'
 
 import { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Play, Pause, Rewind, FastForward, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AudioPlayerProps {
   audioUrl: string
@@ -30,6 +34,7 @@ function formatTime(seconds: number): string {
 const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
   ({ audioUrl, onTimeUpdate, onPlay, onPause }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null)
+    const progressRef = useRef<HTMLDivElement>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -106,12 +111,14 @@ const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
       }
     }
 
-    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const time = parseFloat(e.target.value)
-      if (audioRef.current) {
-        audioRef.current.currentTime = time
-        setCurrentTime(time)
-      }
+    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!progressRef.current || !audioRef.current) return
+      const rect = progressRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const percentage = x / rect.width
+      const time = percentage * duration
+      audioRef.current.currentTime = time
+      setCurrentTime(time)
     }
 
     const handlePlaybackRateChange = () => {
@@ -139,106 +146,83 @@ const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
     return (
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <Card>
+        <CardContent className="p-4">
+          <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
-        {/* Progress bar */}
-        <div className="mb-3">
-          <div className="relative">
-            <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleSeek}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              style={{
-                background: `linear-gradient(to right, #3b82f6 ${progress}%, #e5e7eb ${progress}%)`
-              }}
-            />
+          {/* Progress bar */}
+          <div className="mb-4">
+            <div
+              ref={progressRef}
+              onClick={handleProgressClick}
+              className="relative h-2 bg-muted rounded-full cursor-pointer group"
+            >
+              <div
+                className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full cursor-pointer transition-all opacity-0 group-hover:opacity-100"
+                style={{ left: `calc(${progress}% - 8px)` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground mt-2">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+
+          {/* Controls */}
+          <div className="flex items-center justify-center gap-2">
+            {/* Skip back 15s */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={skipBack}
+              title="Back 15 seconds"
+            >
+              <Rewind className="h-5 w-5" />
+            </Button>
+
+            {/* Play/Pause */}
+            <Button
+              size="icon"
+              onClick={togglePlay}
+              disabled={isLoading}
+              className="h-12 w-12 rounded-full"
+            >
+              {isLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="h-6 w-6" />
+              ) : (
+                <Play className="h-6 w-6 ml-0.5" />
+              )}
+            </Button>
+
+            {/* Skip forward 15s */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={skipForward}
+              title="Forward 15 seconds"
+            >
+              <FastForward className="h-5 w-5" />
+            </Button>
+
+            {/* Playback speed */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePlaybackRateChange}
+              className="ml-2 w-14"
+              title="Change playback speed"
+            >
+              {playbackRate}x
+            </Button>
           </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4">
-          {/* Skip back 15s */}
-          <button
-            onClick={skipBack}
-            className="p-2 text-gray-600 hover:text-gray-900 transition"
-            title="Back 15 seconds"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-            </svg>
-          </button>
-
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            disabled={isLoading}
-            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {isLoading ? (
-              <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            ) : isPlaying ? (
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
-
-          {/* Skip forward 15s */}
-          <button
-            onClick={skipForward}
-            className="p-2 text-gray-600 hover:text-gray-900 transition"
-            title="Forward 15 seconds"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
-            </svg>
-          </button>
-
-          {/* Playback speed */}
-          <button
-            onClick={handlePlaybackRateChange}
-            className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 rounded transition"
-            title="Change playback speed"
-          >
-            {playbackRate}x
-          </button>
-        </div>
-
-        <style jsx>{`
-          .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-          }
-          .slider::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: none;
-          }
-        `}</style>
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 )

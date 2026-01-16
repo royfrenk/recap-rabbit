@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { Upload, FileAudio } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void
@@ -53,11 +55,11 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={() => fileInputRef.current?.click()}
-      className={`
-        border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition
-        ${isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400'}
-        ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-      `}
+      className={cn(
+        "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors",
+        isDragging ? 'border-primary bg-accent' : 'border-border hover:border-primary/50 hover:bg-accent/50',
+        isLoading && 'opacity-50 cursor-not-allowed'
+      )}
     >
       <input
         ref={fileInputRef}
@@ -67,26 +69,17 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
         className="hidden"
         disabled={isLoading}
       />
-      <svg
-        className="w-12 h-12 mx-auto text-gray-400 mb-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-        />
-      </svg>
       {fileName ? (
-        <p className="text-gray-700 font-medium">{fileName}</p>
+        <div className="flex flex-col items-center">
+          <FileAudio className="h-12 w-12 text-primary mb-4" />
+          <p className="text-foreground font-medium">{fileName}</p>
+        </div>
       ) : (
         <>
-          <p className="text-gray-700 font-medium">Drop your audio file here</p>
-          <p className="text-gray-500 text-sm mt-1">or click to browse</p>
-          <p className="text-gray-400 text-xs mt-2">Supports MP3, WAV, M4A, OGG, FLAC</p>
+          <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-foreground font-medium">Drop your audio file here</p>
+          <p className="text-muted-foreground text-sm mt-1">or click to browse</p>
+          <p className="text-muted-foreground/70 text-xs mt-2">Supports MP3, WAV, M4A, OGG, FLAC</p>
         </>
       )}
     </div>

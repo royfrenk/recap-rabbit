@@ -1,4 +1,6 @@
 import { getTranslations } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface KeyQuote {
   text: string
@@ -14,25 +16,34 @@ interface KeyQuotesProps {
 export default function KeyQuotes({ quotes, isRTL = false, languageCode }: KeyQuotesProps) {
   if (!quotes || quotes.length === 0) return null
 
-  const directionClass = isRTL ? 'rtl text-right' : ''
-  const borderClass = isRTL ? 'border-r-4 pr-4 border-l-0 pl-0' : 'border-l-4 pl-4'
   const t = getTranslations(languageCode)
 
   return (
-    <div className={`bg-white rounded-lg shadow p-6 ${directionClass}`}>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">{t.quotes}</h2>
-      <div className="space-y-4">
-        {quotes.map((quote, index) => (
-          <blockquote key={index} className={`${borderClass} border-primary-500 py-2`}>
-            <p className="text-gray-700 italic">&ldquo;{quote.text}&rdquo;</p>
-            {quote.speaker && (
-              <cite className="text-sm text-gray-500 mt-1 block not-italic">
-                — {quote.speaker}
-              </cite>
-            )}
-          </blockquote>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{t.quotes}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {quotes.map((quote, index) => (
+            <blockquote
+              key={index}
+              className={cn(
+                "py-2",
+                isRTL ? "border-r-4 pr-4 border-l-0 pl-0 rtl text-right" : "border-l-4 pl-4",
+                "border-primary"
+              )}
+            >
+              <p className="text-muted-foreground italic">&ldquo;{quote.text}&rdquo;</p>
+              {quote.speaker && (
+                <cite className="text-sm text-muted-foreground/70 mt-2 block not-italic">
+                  — {quote.speaker}
+                </cite>
+              )}
+            </blockquote>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

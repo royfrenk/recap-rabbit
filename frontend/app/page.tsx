@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import FileUpload from '@/components/FileUpload'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, SearchResult } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { Clock, Podcast } from 'lucide-react'
 
 const DEFAULT_POPULAR_SEARCHES = [
   "Tim Ferriss productivity",
@@ -123,11 +126,12 @@ export default function Home() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Get the &ldquo;So What&rdquo; of Any Podcast
+      {/* Hero Section */}
+      <div className="text-center mb-10">
+        <h1 className="text-4xl sm:text-5xl font-bold mb-4">
+          Get the <span className="text-primary">&ldquo;So What&rdquo;</span> of Any Podcast
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Transcribe and summarize any podcast episode. Get key takeaways and quotes without listening to the whole thing.
         </p>
       </div>
@@ -141,68 +145,77 @@ export default function Home() {
 
         {/* Popular Searches */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-500">Popular:</span>
+          <span className="text-sm text-muted-foreground">Popular:</span>
           {popularSearches.map((query) => (
-            <button
+            <Badge
               key={query}
-              onClick={() => handleSearch(query)}
-              disabled={isLoading}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition disabled:opacity-50"
+              variant="muted"
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => !isLoading && handleSearch(query)}
             >
               {query}
-            </button>
+            </Badge>
           ))}
         </div>
 
+        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-gray-50 text-gray-500">or upload your own</span>
+            <span className="px-3 bg-background text-muted-foreground">or upload your own</span>
           </div>
         </div>
 
         <FileUpload onFileSelect={handleFileSelect} isLoading={isLoading} />
       </div>
 
+      {/* Search Results */}
       {showSearch && searchResults.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Search Results</h2>
-          <div className="space-y-4">
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+          <div className="space-y-3">
             {searchResults.map((episode) => (
-              <button
+              <Card
                 key={episode.id}
-                onClick={() => handleEpisodeSelect(episode)}
-                disabled={isLoading}
-                className="w-full text-left bg-white rounded-lg shadow p-4 hover:shadow-md transition disabled:opacity-50"
+                className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                onClick={() => !isLoading && handleEpisodeSelect(episode)}
               >
-                <div className="flex gap-4">
-                  {episode.thumbnail && (
-                    <img
-                      src={episode.thumbnail}
-                      alt=""
-                      className="w-16 h-16 rounded object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">{episode.title}</h3>
-                    <p className="text-sm text-gray-500">{episode.podcast_name}</p>
-                    {episode.duration_seconds && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        {Math.round(episode.duration_seconds / 60)} min
-                      </p>
+                <CardContent className="p-4">
+                  <div className="flex gap-4">
+                    {episode.thumbnail && (
+                      <img
+                        src={episode.thumbnail}
+                        alt=""
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground truncate">{episode.title}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Podcast className="h-3 w-3 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">{episode.podcast_name}</p>
+                      </div>
+                      {episode.duration_seconds && (
+                        <div className="flex items-center gap-1 mt-2">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round(episode.duration_seconds / 60)} min
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       )}
 
       {showSearch && searchResults.length === 0 && (
-        <div className="mt-8 text-center text-gray-500">
+        <div className="mt-10 text-center text-muted-foreground">
           <p>No results found. Try a different search or paste a direct URL.</p>
         </div>
       )}

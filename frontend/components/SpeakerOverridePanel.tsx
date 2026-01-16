@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { TranscriptSegment, updateSpeakers } from '@/lib/api'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { User, Plus, X, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface SpeakerInfo {
   label: string
@@ -18,26 +31,11 @@ interface SpeakerOverridePanelProps {
   onSpeakersUpdated: () => void
 }
 
-function getGenderIcon(gender: string) {
+function getGenderColor(gender: string): string {
   switch (gender) {
-    case 'male':
-      return (
-        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm0 3a3 3 0 11-3 3 3 3 0 013-3zm0 14.2a8.2 8.2 0 01-6.8-3.6c.034-2.25 4.534-3.4 6.8-3.4s6.766 1.15 6.8 3.4a8.2 8.2 0 01-6.8 3.6z"/>
-        </svg>
-      )
-    case 'female':
-      return (
-        <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm0 3a3 3 0 11-3 3 3 3 0 013-3zm0 14.2a8.2 8.2 0 01-6.8-3.6c.034-2.25 4.534-3.4 6.8-3.4s6.766 1.15 6.8 3.4a8.2 8.2 0 01-6.8 3.6z"/>
-        </svg>
-      )
-    default:
-      return (
-        <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-        </svg>
-      )
+    case 'male': return 'text-blue-500'
+    case 'female': return 'text-pink-500'
+    default: return 'text-muted-foreground'
   }
 }
 
@@ -50,7 +48,7 @@ export default function SpeakerOverridePanel({
 }: SpeakerOverridePanelProps) {
   const [speakers, setSpeakers] = useState<SpeakerInfo[]>([])
   const [editedNames, setEditedNames] = useState<Record<string, string>>({})
-  const [customNames, setCustomNames] = useState<string[]>([]) // User-added names
+  const [customNames, setCustomNames] = useState<string[]>([])
   const [newSpeakerName, setNewSpeakerName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -143,97 +141,79 @@ export default function SpeakerOverridePanel({
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Edit Speaker Names</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
-          <p className="text-sm text-gray-600 mb-4">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit Speaker Names</DialogTitle>
+          <DialogDescription>
             Assign names to the speakers detected in this episode. Select from existing names or add new ones.
-          </p>
+          </DialogDescription>
+        </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Add new speaker name section */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Speaker Names</span>
-              <button
+              <span className="text-sm font-medium text-foreground">Speaker Names</span>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowAddSpeaker(!showAddSpeaker)}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="gap-1 h-auto py-1"
               >
-                + Add Name
-              </button>
+                <Plus className="h-3 w-3" />
+                Add Name
+              </Button>
             </div>
 
             {showAddSpeaker && (
               <div className="flex gap-2 mb-2">
-                <input
+                <Input
                   type="text"
                   value={newSpeakerName}
                   onChange={(e) => setNewSpeakerName(e.target.value)}
                   placeholder="Enter new speaker name"
-                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="h-8 text-sm"
                   onKeyPress={(e) => e.key === 'Enter' && handleAddCustomName()}
                 />
-                <button
-                  onClick={handleAddCustomName}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
+                <Button size="sm" onClick={handleAddCustomName} className="h-8">
                   Add
-                </button>
+                </Button>
               </div>
             )}
 
             {customNames.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {customNames.map(name => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                  >
+                  <Badge key={name} variant="secondary" className="gap-1">
                     {name}
                     <button
                       onClick={() => handleRemoveCustomName(name)}
-                      className="hover:text-blue-600"
+                      className="hover:text-destructive"
                     >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <X className="h-3 w-3" />
                     </button>
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}
           </div>
 
           {/* Speaker assignments */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {speakers.map((speaker) => (
               <div key={speaker.label} className="flex items-center gap-3">
                 {/* Gender indicator */}
-                <div className="flex-shrink-0" title={`Gender: ${speaker.gender}`}>
-                  {getGenderIcon(speaker.gender)}
+                <div className={cn("flex-shrink-0", getGenderColor(speaker.gender))} title={`Gender: ${speaker.gender}`}>
+                  <User className="h-4 w-4" />
                 </div>
 
                 {/* Label */}
                 <div className="w-16 flex-shrink-0">
-                  <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <Badge variant="outline" className="font-mono text-xs">
                     {speaker.label}
-                  </span>
+                  </Badge>
                 </div>
 
                 {/* Dropdown + Input combo */}
@@ -242,7 +222,7 @@ export default function SpeakerOverridePanel({
                     <select
                       value={availableNames.includes(editedNames[speaker.label]) ? editedNames[speaker.label] : ''}
                       onChange={(e) => e.target.value && handleNameChange(speaker.label, e.target.value)}
-                      className="px-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="px-2 py-2 text-sm border border-input rounded-md focus:ring-2 focus:ring-ring bg-background"
                     >
                       <option value="">Select...</option>
                       {availableNames.map(name => (
@@ -250,17 +230,17 @@ export default function SpeakerOverridePanel({
                       ))}
                     </select>
                   )}
-                  <input
+                  <Input
                     type="text"
                     value={editedNames[speaker.label] || ''}
                     onChange={(e) => handleNameChange(speaker.label, e.target.value)}
                     placeholder="Or type a name"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="flex-1 h-9 text-sm"
                   />
                 </div>
 
                 {/* Segment count */}
-                <span className="text-xs text-gray-400 flex-shrink-0 w-20 text-right">
+                <span className="text-xs text-muted-foreground flex-shrink-0 w-16 text-right">
                   {speaker.segmentCount} seg.
                 </span>
               </div>
@@ -268,35 +248,34 @@ export default function SpeakerOverridePanel({
           </div>
 
           {speakers.length === 0 && (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-muted-foreground text-center py-8">
               No speakers detected in this transcript.
             </p>
           )}
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
               {error}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition"
-          >
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
