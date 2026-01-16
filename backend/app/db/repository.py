@@ -662,3 +662,302 @@ def _row_to_episode(row: dict) -> EpisodeResult:
         is_public=bool(row.get('is_public', 0)),
         slug=row.get('slug')
     )
+
+
+# ============ Subscriptions ============
+
+async def create_subscription(
+    subscription_id: str,
+    user_id: str,
+    podcast_id: str,
+    podcast_name: str,
+    feed_url: str,
+    artwork_url: Optional[str] = None
+) -> bool:
+    """Create a new podcast subscription."""
+    async with get_db() as db:
+        try:
+            now = datetime.utcnow().isoformat()
+            await db.execute("""
+                INSERT INTO subscriptions (id, user_id, podcast_id, podcast_name, feed_url, artwork_url, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (subscription_id, user_id, podcast_id, podcast_name, feed_url, artwork_url, now))
+            await db.commit()
+            return True
+        except Exception as e:
+            # Likely duplicate subscription
+            if "UNIQUE constraint" in str(e):
+                return False
+            raise
+
+
+async def get_subscription(subscription_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Get a subscription by ID, optionally filtered by user."""
+    async with get_db() as db:
+        if user_id:
+            query = "SELECT * FROM subscriptions WHERE id = ? AND user_id = ?"
+            params = (subscription_id, user_id)
+        else:
+            query = "SELECT * FROM subscriptions WHERE id = ?"
+            params = (subscription_id,)
+
+        async with db.execute(query, params) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return dict(row)
+            return None
+
+
+async def get_user_subscriptions(user_id: str) -> List[Dict[str, Any]]:
+    """Get all subscriptions for a user."""
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT s.*,
+                   (SELECT COUNT(*) FROM subscription_episodes WHERE subscription_id = s.id) as total_episodes,
+                   (SELECT COUNT(*) FROM subscription_episodes WHERE subscription_id = s.id AND status = 'completed') as processed_episodes
+            FROM subscriptions s
+            WHERE s.user_id = ?
+            ORDER BY s.created_at DESC
+        """, (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+async def update_subscription(subscription_id: str, user_id: str, **updates) -> bool:
+    """Update a subscription's fields."""
+    if not updates:
+        return False
+
+    async with get_db() as db:
+        set_clauses = []
+        params = []
+
+        for field, value in updates.items():
+            if field in ('is_active', 'last_checked_at', 'last_episode_date'):
+                set_clauses.append(f"{field} = ?")
+                params.append(value)
+
+        if not set_clauses:
+            return False
+
+        params.extend([subscription_id, user_id])
+        query = f"UPDATE subscriptions SET {', '.join(set_clauses)} WHERE id = ? AND user_id = ?"
+
+        result = await db.execute(query, params)
+        await db.commit()
+        return result.rowcount > 0
+
+
+async def delete_subscription(subscription_id: str, user_id: str) -> bool:
+    """Delete a subscription (cascade deletes subscription_episodes)."""
+    async with get_db() as db:
+        result = await db.execute(
+            "DELETE FROM subscriptions WHERE id = ? AND user_id = ?",
+            (subscription_id, user_id)
+        )
+        await db.commit()
+        return result.rowcount > 0
+
+
+async def get_active_subscriptions() -> List[Dict[str, Any]]:
+    """Get all active subscriptions (for scheduler)."""
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT * FROM subscriptions
+            WHERE is_active = 1
+            ORDER BY last_checked_at ASC NULLS FIRST
+        """) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+# ============ Subscription Episodes ============
+
+async def create_subscription_episode(
+    subscription_id: str,
+    episode_guid: str,
+    episode_title: Optional[str] = None,
+    audio_url: Optional[str] = None,
+    publish_date: Optional[str] = None,
+    duration_seconds: Optional[float] = None
+) -> Optional[int]:
+    """Create a subscription episode record. Returns ID or None if duplicate."""
+    async with get_db() as db:
+        try:
+            now = datetime.utcnow().isoformat()
+            cursor = await db.execute("""
+                INSERT INTO subscription_episodes
+                (subscription_id, episode_guid, episode_title, audio_url, publish_date, duration_seconds, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (subscription_id, episode_guid, episode_title, audio_url, publish_date, duration_seconds, now))
+            await db.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            if "UNIQUE constraint" in str(e):
+                return None
+            raise
+
+
+async def bulk_create_subscription_episodes(
+    subscription_id: str,
+    episodes: List[Dict[str, Any]]
+) -> int:
+    """Bulk create subscription episodes. Returns count of inserted."""
+    async with get_db() as db:
+        now = datetime.utcnow().isoformat()
+        inserted = 0
+
+        for ep in episodes:
+            try:
+                await db.execute("""
+                    INSERT INTO subscription_episodes
+                    (subscription_id, episode_guid, episode_title, audio_url, publish_date, duration_seconds, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    subscription_id,
+                    ep['guid'],
+                    ep.get('title'),
+                    ep.get('audio_url'),
+                    ep.get('publish_date'),
+                    ep.get('duration_seconds'),
+                    now
+                ))
+                inserted += 1
+            except Exception as e:
+                if "UNIQUE constraint" not in str(e):
+                    raise
+                # Skip duplicates
+
+        await db.commit()
+        return inserted
+
+
+async def get_subscription_episodes(
+    subscription_id: str,
+    status_filter: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Get episodes for a subscription with optional filters."""
+    async with get_db() as db:
+        conditions = ["subscription_id = ?"]
+        params: List[Any] = [subscription_id]
+
+        if status_filter:
+            conditions.append("status = ?")
+            params.append(status_filter)
+
+        if start_date:
+            conditions.append("publish_date >= ?")
+            params.append(start_date)
+
+        if end_date:
+            conditions.append("publish_date <= ?")
+            params.append(end_date)
+
+        params.extend([limit, offset])
+
+        query = f"""
+            SELECT * FROM subscription_episodes
+            WHERE {' AND '.join(conditions)}
+            ORDER BY publish_date DESC
+            LIMIT ? OFFSET ?
+        """
+
+        async with db.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+async def get_subscription_episode_count(
+    subscription_id: str,
+    status_filter: Optional[str] = None
+) -> int:
+    """Get count of episodes for a subscription."""
+    async with get_db() as db:
+        if status_filter:
+            query = "SELECT COUNT(*) FROM subscription_episodes WHERE subscription_id = ? AND status = ?"
+            params = (subscription_id, status_filter)
+        else:
+            query = "SELECT COUNT(*) FROM subscription_episodes WHERE subscription_id = ?"
+            params = (subscription_id,)
+
+        async with db.execute(query, params) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+
+async def update_subscription_episode_status(
+    episode_ids: List[int],
+    status: str,
+    linked_episode_id: Optional[str] = None
+) -> int:
+    """Update status for multiple subscription episodes."""
+    if not episode_ids:
+        return 0
+
+    async with get_db() as db:
+        placeholders = ','.join('?' * len(episode_ids))
+
+        if linked_episode_id:
+            query = f"UPDATE subscription_episodes SET status = ?, episode_id = ? WHERE id IN ({placeholders})"
+            params = [status, linked_episode_id] + episode_ids
+        else:
+            query = f"UPDATE subscription_episodes SET status = ? WHERE id IN ({placeholders})"
+            params = [status] + episode_ids
+
+        result = await db.execute(query, params)
+        await db.commit()
+        return result.rowcount
+
+
+async def get_subscription_episode_by_id(episode_id: int) -> Optional[Dict[str, Any]]:
+    """Get a single subscription episode by ID."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT * FROM subscription_episodes WHERE id = ?",
+            (episode_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return dict(row)
+            return None
+
+
+async def get_subscription_episodes_by_ids(episode_ids: List[int]) -> List[Dict[str, Any]]:
+    """Get multiple subscription episodes by IDs (batch query to avoid N+1)."""
+    if not episode_ids:
+        return []
+
+    async with get_db() as db:
+        placeholders = ','.join('?' * len(episode_ids))
+        async with db.execute(
+            f"SELECT * FROM subscription_episodes WHERE id IN ({placeholders})",
+            episode_ids
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+async def check_episode_exists(subscription_id: str, episode_guid: str) -> bool:
+    """Check if an episode already exists for a subscription."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT 1 FROM subscription_episodes WHERE subscription_id = ? AND episode_guid = ?",
+            (subscription_id, episode_guid)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row is not None
+
+
+async def get_newest_episode_date(subscription_id: str) -> Optional[str]:
+    """Get the newest episode publish date for a subscription."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT MAX(publish_date) FROM subscription_episodes WHERE subscription_id = ?",
+            (subscription_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row and row[0] else None

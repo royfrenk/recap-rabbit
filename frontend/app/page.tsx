@@ -8,6 +8,7 @@ import HeroSection from '@/components/HeroSection'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { uploadEpisode, processUrl, searchPodcasts, getPopularSearches, lookupPodcastByUrl, getPodcastEpisodes, isPodcastPlatformUrl, SearchResult, PodcastLookupResult } from '@/lib/api'
+import SubscribeButton from '@/components/SubscribeButton'
 import { useAuth } from '@/lib/auth'
 import { Clock, Podcast, Calendar, ChevronLeft, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -64,7 +65,7 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [showSearch, setShowSearch] = useState(false)
   const [popularSearches, setPopularSearches] = useState<string[]>(DEFAULT_POPULAR_SEARCHES)
-  const [viewingPodcast, setViewingPodcast] = useState<{ id: string; name: string; thumbnail?: string } | null>(null)
+  const [viewingPodcast, setViewingPodcast] = useState<{ id: string; name: string; thumbnail?: string; feedUrl?: string } | null>(null)
 
   // Fetch popular searches on mount
   useEffect(() => {
@@ -112,7 +113,8 @@ export default function Home() {
           setViewingPodcast({
             id: result.podcast_id || '',
             name: result.podcast_name || 'Podcast',
-            thumbnail: result.podcast_thumbnail
+            thumbnail: result.podcast_thumbnail,
+            feedUrl: result.feed_url
           })
           setShowSearch(true)
         } else {
@@ -152,7 +154,12 @@ export default function Home() {
     try {
       const result = await getPodcastEpisodes(podcastId)
       setSearchResults(result.results)
-      setViewingPodcast({ id: podcastId, name: podcastName, thumbnail })
+      setViewingPodcast({
+        id: podcastId,
+        name: podcastName,
+        thumbnail,
+        feedUrl: result.feed_url
+      })
       setShowSearch(true)
     } catch (error: any) {
       console.error('Failed to load podcast:', error)
@@ -275,10 +282,19 @@ export default function Home() {
                     className="w-20 h-20 rounded-lg object-cover"
                   />
                 )}
-                <div>
+                <div className="flex-1">
                   <h2 className="text-xl font-semibold">{viewingPodcast.name}</h2>
                   <p className="text-sm text-muted-foreground">{searchResults.length} episodes</p>
                 </div>
+                {viewingPodcast.feedUrl && (
+                  <SubscribeButton
+                    podcastId={viewingPodcast.id}
+                    podcastName={viewingPodcast.name}
+                    feedUrl={viewingPodcast.feedUrl}
+                    artworkUrl={viewingPodcast.thumbnail}
+                    variant="default"
+                  />
+                )}
               </div>
             </div>
           ) : (

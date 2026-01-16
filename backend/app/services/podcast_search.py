@@ -269,7 +269,8 @@ async def lookup_podcast_by_id(podcast_id: str, limit: int = 10) -> dict:
                 "total": len(episode_results),
                 "podcast_id": podcast_id,
                 "podcast_name": podcast_name,
-                "podcast_thumbnail": thumbnail
+                "podcast_thumbnail": thumbnail,
+                "feed_url": feed_url
             }
 
     except Exception as e:
