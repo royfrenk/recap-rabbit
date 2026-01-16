@@ -2,7 +2,13 @@ from fastapi import APIRouter, Query
 from typing import List
 
 from app.models.schemas import SearchResponse
-from app.services.podcast_search import search_podcasts, get_episode_details
+from app.services.podcast_search import (
+    search_podcasts,
+    get_episode_details,
+    lookup_podcast_by_url,
+    lookup_podcast_by_id,
+    parse_podcast_url
+)
 from app.db.repository import log_search, get_popular_searches
 
 router = APIRouter()
@@ -40,6 +46,35 @@ async def search(
     results_count = len(result.get("results", [])) if isinstance(result, dict) else 0
     await log_search(query=q, results_count=results_count)
 
+    return result
+
+
+@router.get("/podcast/lookup")
+async def lookup_podcast(
+    url: str = Query(..., description="Apple Podcasts URL"),
+    limit: int = Query(20, ge=1, le=100, description="Number of episodes to return")
+):
+    """
+    Look up a podcast by its Apple Podcasts URL and return episodes.
+
+    Supports URLs like:
+    - https://podcasts.apple.com/us/podcast/podcast-name/id1234567890
+    """
+    result = await lookup_podcast_by_url(url, limit)
+    return result
+
+
+@router.get("/podcast/{podcast_id}")
+async def get_podcast_episodes(
+    podcast_id: str,
+    limit: int = Query(50, ge=1, le=100, description="Number of episodes to return")
+):
+    """
+    Get episodes for a specific podcast by its Apple/iTunes ID.
+
+    Returns episodes sorted by publish date (newest first).
+    """
+    result = await lookup_podcast_by_id(podcast_id, limit)
     return result
 
 

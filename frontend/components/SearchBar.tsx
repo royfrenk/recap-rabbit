@@ -33,7 +33,7 @@ export default function SearchBar({ onSearch, onUrlSubmit, isLoading }: SearchBa
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Search podcasts or paste an episode URL..."
+          placeholder="Search podcasts or paste an Apple Podcasts link..."
           className="h-14 pl-12 pr-24 text-lg rounded-xl border-2 focus-visible:ring-primary focus-visible:border-primary"
           disabled={isLoading}
         />

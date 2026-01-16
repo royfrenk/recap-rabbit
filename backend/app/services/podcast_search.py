@@ -138,6 +138,7 @@ async def search_podcasts(query: str, limit: int = 10) -> dict:
             # For each podcast, fetch recent episodes from RSS feed
             for podcast in podcasts[:3]:  # Top 3 podcasts
                 podcast_name = podcast.get("collectionName", "")
+                podcast_id = str(podcast.get("collectionId", ""))
                 feed_url = podcast.get("feedUrl")
                 thumbnail = podcast.get("artworkUrl600") or podcast.get("artworkUrl100")
 
@@ -152,6 +153,7 @@ async def search_podcasts(query: str, limit: int = 10) -> dict:
                         "id": f"itunes_{hash(ep['audio_url']) % 10000000}",
                         "title": ep["title"],
                         "podcast_name": podcast_name,
+                        "podcast_id": podcast_id,
                         "description": ep["description"],
                         "audio_url": ep["audio_url"],
                         "thumbnail": ep["thumbnail"] or thumbnail,
@@ -177,3 +179,120 @@ async def get_episode_details(episode_id: str) -> Optional[dict]:
     # iTunes doesn't support direct episode lookup by ID
     # This would require caching or a different approach
     return None
+
+
+def parse_podcast_url(url: str) -> Optional[str]:
+    """
+    Parse a podcast platform URL and extract the podcast ID.
+
+    Supported formats:
+    - Apple Podcasts: https://podcasts.apple.com/{country}/podcast/{name}/id{id}
+    - Apple Podcasts short: https://podcasts.apple.com/podcast/id{id}
+
+    Returns the numeric podcast ID or None if not a supported URL.
+    """
+    # Apple Podcasts URL patterns
+    apple_patterns = [
+        r'podcasts\.apple\.com/[a-z]{2}/podcast/[^/]+/id(\d+)',  # Full URL with country
+        r'podcasts\.apple\.com/podcast/[^/]+/id(\d+)',           # Without country
+        r'podcasts\.apple\.com/[a-z]{2}/podcast/id(\d+)',        # Short with country
+        r'podcasts\.apple\.com/podcast/id(\d+)',                  # Short without country
+        r'itunes\.apple\.com/[a-z]{2}/podcast/[^/]+/id(\d+)',    # Old iTunes URL
+    ]
+
+    for pattern in apple_patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+
+    return None
+
+
+async def lookup_podcast_by_id(podcast_id: str, limit: int = 10) -> dict:
+    """
+    Look up a podcast by its Apple/iTunes ID and return its episodes.
+
+    Uses iTunes Lookup API to get podcast info, then fetches episodes from RSS.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Look up the podcast by ID
+            response = await client.get(
+                "https://itunes.apple.com/lookup",
+                params={
+                    "id": podcast_id,
+                    "entity": "podcast"
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            results = data.get("results", [])
+            if not results:
+                return {
+                    "results": [],
+                    "total": 0,
+                    "message": "Podcast not found"
+                }
+
+            podcast = results[0]
+            podcast_name = podcast.get("collectionName", "")
+            feed_url = podcast.get("feedUrl")
+            thumbnail = podcast.get("artworkUrl600") or podcast.get("artworkUrl100")
+
+            if not feed_url:
+                return {
+                    "results": [],
+                    "total": 0,
+                    "message": "Podcast RSS feed not available"
+                }
+
+            # Fetch episodes from RSS feed
+            episodes = await fetch_rss_episodes(feed_url, limit=limit)
+
+            episode_results = []
+            for ep in episodes:
+                episode_results.append({
+                    "id": f"itunes_{hash(ep['audio_url']) % 10000000}",
+                    "title": ep["title"],
+                    "podcast_name": podcast_name,
+                    "podcast_id": podcast_id,
+                    "description": ep["description"],
+                    "audio_url": ep["audio_url"],
+                    "thumbnail": ep["thumbnail"] or thumbnail,
+                    "duration_seconds": ep["duration_seconds"],
+                    "publish_date": ep["publish_date"]
+                })
+
+            return {
+                "results": episode_results,
+                "total": len(episode_results),
+                "podcast_id": podcast_id,
+                "podcast_name": podcast_name,
+                "podcast_thumbnail": thumbnail
+            }
+
+    except Exception as e:
+        return {
+            "results": [],
+            "total": 0,
+            "message": f"Failed to look up podcast: {str(e)}"
+        }
+
+
+async def lookup_podcast_by_url(url: str, limit: int = 10) -> dict:
+    """
+    Look up a podcast by its platform URL (e.g., Apple Podcasts URL).
+
+    Parses the URL to extract the podcast ID, then fetches episodes.
+    """
+    podcast_id = parse_podcast_url(url)
+
+    if not podcast_id:
+        return {
+            "results": [],
+            "total": 0,
+            "message": "Unsupported podcast URL format. Currently supports Apple Podcasts URLs."
+        }
+
+    return await lookup_podcast_by_id(podcast_id, limit=limit)
