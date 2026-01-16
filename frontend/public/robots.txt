@@ -1,0 +1,17 @@
+# Recap Rabbit robots.txt
+
+User-agent: *
+Allow: /
+Allow: /preview/
+Allow: /summary/
+Allow: /podcast/
+Allow: /topics/
+
+# Disallow authenticated/private pages
+Disallow: /episode/
+Disallow: /history
+Disallow: /usage
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://recaprabbit.com/sitemap.xml

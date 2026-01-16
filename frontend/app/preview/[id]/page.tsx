@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { processUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { ArrowLeft, Clock, Calendar, Podcast, Sparkles, Loader2 } from 'lucide-react'
+import { PodcastEpisodeSchema } from '@/components/JsonLd'
 
 // Format publish date like Apple Podcasts
 function formatPublishDate(dateStr: string): string {
@@ -81,8 +82,21 @@ export default function EpisodePreviewPage({ params }: { params: { id: string } 
     }
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://recaprabbit.com'
+  const pageUrl = `${siteUrl}/preview/${params.id}`
+
   return (
     <div className="max-w-3xl mx-auto">
+      <PodcastEpisodeSchema
+        name={title}
+        description={description || `Listen to ${title} from ${podcastName}`}
+        url={pageUrl}
+        datePublished={publishDate || undefined}
+        duration={durationSeconds || undefined}
+        podcastName={podcastName}
+        image={thumbnail || undefined}
+      />
+
       <Button
         variant="ghost"
         onClick={() => router.back()}
