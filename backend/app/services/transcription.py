@@ -58,10 +58,10 @@ async def transcribe_audio(
         # Step 3: Poll for completion with progress tracking
         start_time = time.time()
 
-        # Estimate processing time: AssemblyAI typically processes at 0.3-0.5x realtime
-        # Use 0.4x as baseline (2.5 min processing per 1 min audio)
+        # Estimate processing time: AssemblyAI typically processes at ~1x realtime
+        # Use 0.8x as baseline (48 seconds processing per 1 min audio)
         duration_mins = (duration_seconds / 60) if duration_seconds else 10
-        estimated_seconds = duration_mins * 2.5 * 60  # Convert to seconds
+        estimated_seconds = duration_mins * 0.8 * 60  # Convert to seconds
 
         while True:
             status_response = await client.get(
