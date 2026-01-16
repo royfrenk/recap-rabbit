@@ -2,6 +2,8 @@
 Data access layer for episodes and usage tracking.
 """
 import json
+import re
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from app.db.database import get_db
@@ -501,6 +503,127 @@ async def update_episode_speakers(episode_id: str, speaker_map: Dict[str, str]) 
         return True
 
 
+def _generate_slug(title: str, podcast_name: str) -> str:
+    """Generate a URL-friendly slug from title and podcast name."""
+    # Combine podcast and title
+    text = f"{podcast_name}-{title}" if podcast_name else title
+
+    # Convert to lowercase and replace spaces/special chars with hyphens
+    slug = text.lower()
+    slug = re.sub(r'[^\w\s-]', '', slug)  # Remove special characters
+    slug = re.sub(r'[\s_]+', '-', slug)   # Replace spaces/underscores with hyphens
+    slug = re.sub(r'-+', '-', slug)       # Collapse multiple hyphens
+    slug = slug.strip('-')                 # Remove leading/trailing hyphens
+
+    # Truncate to reasonable length and add short unique suffix
+    slug = slug[:80]
+    unique_suffix = uuid.uuid4().hex[:6]
+
+    return f"{slug}-{unique_suffix}"
+
+
+async def set_episode_public(episode_id: str, is_public: bool, user_id: str) -> Optional[str]:
+    """
+    Set an episode as public or private.
+
+    Args:
+        episode_id: The episode ID
+        is_public: Whether to make it public
+        user_id: The user ID (for ownership verification)
+
+    Returns:
+        The slug if made public, None otherwise
+    """
+    async with get_db() as db:
+        # Verify ownership and get episode data
+        async with db.execute(
+            "SELECT title, podcast_name, slug, status FROM episodes WHERE id = ? AND user_id = ?",
+            (episode_id, user_id)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return None
+
+            # Only allow completed episodes to be made public
+            if row['status'] != 'completed' and is_public:
+                return None
+
+        now = datetime.utcnow().isoformat()
+
+        if is_public:
+            # Generate slug if doesn't exist
+            slug = row['slug']
+            if not slug:
+                slug = _generate_slug(row['title'] or 'episode', row['podcast_name'] or 'podcast')
+
+            await db.execute(
+                "UPDATE episodes SET is_public = 1, slug = ?, updated_at = ? WHERE id = ?",
+                (slug, now, episode_id)
+            )
+            await db.commit()
+            return slug
+        else:
+            # Make private (keep slug for potential re-enabling)
+            await db.execute(
+                "UPDATE episodes SET is_public = 0, updated_at = ? WHERE id = ?",
+                (now, episode_id)
+            )
+            await db.commit()
+            return None
+
+
+async def get_public_episode_by_slug(slug: str) -> Optional[EpisodeResult]:
+    """Get a public episode by its slug."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT * FROM episodes WHERE slug = ? AND is_public = 1 AND status = 'completed'",
+            (slug,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return _row_to_episode(dict(row))
+            return None
+
+
+async def get_all_public_episodes(limit: int = 1000) -> List[Dict[str, Any]]:
+    """Get all public episodes for sitemap generation."""
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT id, slug, title, podcast_name, updated_at
+            FROM episodes
+            WHERE is_public = 1 AND status = 'completed' AND slug IS NOT NULL
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """, (limit,)) as cursor:
+            rows = await cursor.fetchall()
+            return [
+                {
+                    "id": row['id'],
+                    "slug": row['slug'],
+                    "title": row['title'],
+                    "podcast_name": row['podcast_name'],
+                    "updated_at": row['updated_at']
+                }
+                for row in rows
+            ]
+
+
+async def get_episode_public_status(episode_id: str) -> Optional[Dict[str, Any]]:
+    """Get the public status and slug of an episode."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT is_public, slug FROM episodes WHERE id = ?",
+            (episode_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                return {
+                    "is_public": bool(row['is_public']),
+                    "slug": row['slug']
+                }
+            return None
+
+
 def _row_to_episode(row: dict) -> EpisodeResult:
     """Convert database row to EpisodeResult."""
     transcript = None
@@ -535,5 +658,7 @@ def _row_to_episode(row: dict) -> EpisodeResult:
         audio_url=row.get('audio_url'),
         language_code=row.get('language_code'),
         created_at=row.get('created_at'),
-        updated_at=row.get('updated_at')
+        updated_at=row.get('updated_at'),
+        is_public=bool(row.get('is_public', 0)),
+        slug=row.get('slug')
     )

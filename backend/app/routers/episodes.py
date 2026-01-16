@@ -17,7 +17,8 @@ from app.models.schemas import (
     EpisodeListItem,
     EpisodeListResponse,
     PDFExportRequest,
-    SpeakerUpdateRequest
+    SpeakerUpdateRequest,
+    SetPublicRequest
 )
 from app.utils.audio import download_audio, convert_to_wav, get_audio_duration
 from app.services.transcription import transcribe_audio
@@ -398,3 +399,36 @@ async def update_speakers(episode_id: str, request: SpeakerUpdateRequest, user: 
         raise HTTPException(status_code=500, detail="Failed to update speakers")
 
     return {"message": "Speakers updated successfully"}
+
+
+@router.put("/{episode_id}/public")
+async def set_episode_public(episode_id: str, request: SetPublicRequest, user: dict = Depends(require_user)):
+    """Set an episode as public or private for sharing."""
+    episode = await repository.get_episode(episode_id, user["sub"])
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+
+    if episode.status != ProcessingStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Only completed episodes can be made public")
+
+    slug = await repository.set_episode_public(episode_id, request.is_public, user["sub"])
+
+    if request.is_public and not slug:
+        raise HTTPException(status_code=500, detail="Failed to make episode public")
+
+    return {
+        "is_public": request.is_public,
+        "slug": slug,
+        "share_url": f"/summary/{slug}" if slug else None
+    }
+
+
+@router.get("/{episode_id}/public-status")
+async def get_public_status(episode_id: str, user: dict = Depends(require_user)):
+    """Get the public status of an episode."""
+    episode = await repository.get_episode(episode_id, user["sub"])
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+
+    status = await repository.get_episode_public_status(episode_id)
+    return status or {"is_public": False, "slug": None}

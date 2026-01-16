@@ -59,6 +59,9 @@ class EpisodeResult(BaseModel):
     language_code: Optional[str] = None  # Detected language (e.g., 'he', 'en', 'es')
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    # SEO public sharing
+    is_public: bool = False
+    slug: Optional[str] = None
 
 
 class EpisodeListItem(BaseModel):
@@ -112,3 +115,20 @@ class SearchResponse(BaseModel):
 class SpeakerUpdateRequest(BaseModel):
     """Request to update speaker names."""
     speaker_map: dict[str, str]  # original_label -> new_name
+
+
+class SetPublicRequest(BaseModel):
+    """Request to set episode public/private."""
+    is_public: bool
+
+
+class PublicSummaryResponse(BaseModel):
+    """Public summary for SEO pages (no sensitive data)."""
+    slug: str
+    title: Optional[str] = None
+    podcast_name: Optional[str] = None
+    description: Optional[str] = None
+    summary: Optional[EpisodeSummary] = None
+    duration_seconds: Optional[float] = None
+    language_code: Optional[str] = None
+    created_at: Optional[str] = None

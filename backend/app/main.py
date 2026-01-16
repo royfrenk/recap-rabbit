@@ -16,7 +16,7 @@ print(f"Directory contents: {os.listdir('.')}", flush=True)
 
 try:
     print("Importing routers...", flush=True)
-    from app.routers import episodes, search, usage, auth
+    from app.routers import episodes, search, usage, auth, public
     print("Importing database...", flush=True)
     from app.db.database import init_database
     print("Importing repository...", flush=True)
@@ -85,6 +85,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(episodes.router, prefix="/api/episodes", tags=["episodes"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
+app.include_router(public.router, prefix="/api/public", tags=["public"])
 
 
 @app.get("/health")

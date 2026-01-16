@@ -267,3 +267,51 @@ export async function updateSpeakers(
     speaker_map: speakerMap
   })
 }
+
+// Public summary types and functions
+
+export interface PublicSummary {
+  slug: string
+  title: string | null
+  podcast_name: string | null
+  description: string | null
+  summary: EpisodeSummary | null
+  duration_seconds: number | null
+  language_code: string | null
+  created_at: string | null
+}
+
+export interface PublicSummaryListItem {
+  id: string
+  slug: string
+  title: string | null
+  podcast_name: string | null
+  updated_at: string | null
+}
+
+export async function getPublicSummary(slug: string): Promise<PublicSummary> {
+  const response = await api.get(`/public/summary/${slug}`)
+  return response.data
+}
+
+export async function listPublicSummaries(limit: number = 100): Promise<PublicSummaryListItem[]> {
+  const response = await api.get('/public/summaries', { params: { limit } })
+  return response.data
+}
+
+export async function setEpisodePublic(episodeId: string, isPublic: boolean): Promise<{
+  is_public: boolean
+  slug: string | null
+  share_url: string | null
+}> {
+  const response = await api.put(`/episodes/${episodeId}/public`, { is_public: isPublic })
+  return response.data
+}
+
+export async function getEpisodePublicStatus(episodeId: string): Promise<{
+  is_public: boolean
+  slug: string | null
+}> {
+  const response = await api.get(`/episodes/${episodeId}/public-status`)
+  return response.data
+}

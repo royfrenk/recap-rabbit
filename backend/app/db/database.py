@@ -63,6 +63,18 @@ async def init_database():
         except Exception:
             pass  # Column already exists
 
+        # Migration: add is_public flag for SEO public summaries
+        try:
+            await db.execute("ALTER TABLE episodes ADD COLUMN is_public INTEGER DEFAULT 0")
+        except Exception:
+            pass  # Column already exists
+
+        # Migration: add slug for URL-friendly public URLs
+        try:
+            await db.execute("ALTER TABLE episodes ADD COLUMN slug TEXT UNIQUE")
+        except Exception:
+            pass  # Column already exists
+
         # Create index for status filtering
         await db.execute("""
             CREATE INDEX IF NOT EXISTS idx_episodes_status ON episodes(status)
@@ -139,6 +151,16 @@ async def init_database():
         # Index for popular searches aggregation
         await db.execute("""
             CREATE INDEX IF NOT EXISTS idx_search_query ON search_logs(query, created_at)
+        """)
+
+        # Index for public episodes (SEO)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_public ON episodes(is_public, status)
+        """)
+
+        # Index for slug lookup
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_slug ON episodes(slug)
         """)
 
         await db.commit()

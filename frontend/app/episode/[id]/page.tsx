@@ -11,8 +11,8 @@ import AudioPlayer, { AudioPlayerRef } from '@/components/AudioPlayer'
 import SpeakerOverridePanel from '@/components/SpeakerOverridePanel'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getEpisode, getEpisodeStatus, EpisodeResult, TranscriptSegment, RTL_LANGUAGES } from '@/lib/api'
-import { ArrowLeft, Users, Download, Clock, Podcast } from 'lucide-react'
+import { getEpisode, getEpisodeStatus, getEpisodePublicStatus, setEpisodePublic, EpisodeResult, TranscriptSegment, RTL_LANGUAGES } from '@/lib/api'
+import { ArrowLeft, Users, Download, Clock, Podcast, Share2, Link, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function EpisodePage({ params }: { params: { id: string } }) {
@@ -25,6 +25,11 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
   const [showSpeakerPanel, setShowSpeakerPanel] = useState(false)
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState<number>(0)
   const [showEnglish, setShowEnglish] = useState(false)  // Toggle for bilingual content
+  const [isPublic, setIsPublic] = useState(false)
+  const [publicSlug, setPublicSlug] = useState<string | null>(null)
+  const [isTogglingPublic, setIsTogglingPublic] = useState(false)
+  const [showSharePanel, setShowSharePanel] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -58,6 +63,47 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
 
     return () => clearInterval(interval)
   }, [id])
+
+  // Fetch public status when episode is completed
+  useEffect(() => {
+    const fetchPublicStatus = async () => {
+      if (episode?.status === 'completed') {
+        try {
+          const status = await getEpisodePublicStatus(id)
+          setIsPublic(status.is_public)
+          setPublicSlug(status.slug)
+        } catch (error) {
+          console.error('Failed to fetch public status:', error)
+        }
+      }
+    }
+    fetchPublicStatus()
+  }, [id, episode?.status])
+
+  const handleTogglePublic = async () => {
+    setIsTogglingPublic(true)
+    try {
+      const result = await setEpisodePublic(id, !isPublic)
+      setIsPublic(result.is_public)
+      setPublicSlug(result.slug)
+      if (result.is_public) {
+        setShowSharePanel(true)
+      }
+    } catch (error) {
+      console.error('Failed to toggle public status:', error)
+    } finally {
+      setIsTogglingPublic(false)
+    }
+  }
+
+  const handleCopyLink = async () => {
+    if (publicSlug) {
+      const shareUrl = `${window.location.origin}/summary/${publicSlug}`
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   const handleSegmentClick = (segment: TranscriptSegment) => {
     if (audioPlayerRef.current) {
@@ -194,6 +240,20 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
                   </Button>
                 )}
                 <Button
+                  variant={isPublic ? "default" : "outline"}
+                  size="sm"
+                  onClick={isPublic ? () => setShowSharePanel(!showSharePanel) : handleTogglePublic}
+                  disabled={isTogglingPublic}
+                  className="gap-2"
+                >
+                  {isTogglingPublic ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="h-4 w-4" />
+                  )}
+                  {isPublic ? 'Share' : 'Make Public'}
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowExportModal(true)}
@@ -205,6 +265,45 @@ export default function EpisodePage({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
+
+          {/* Share Panel */}
+          {showSharePanel && isPublic && publicSlug && (
+            <Card className="mb-6 border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground mb-1">Public share link</p>
+                    <div className="flex items-center gap-2">
+                      <Link className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <code className="text-sm text-muted-foreground truncate">
+                        {window.location.origin}/summary/{publicSlug}
+                      </code>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyLink}
+                      className="gap-2"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Link className="h-4 w-4" />}
+                      {copied ? 'Copied!' : 'Copy Link'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleTogglePublic}
+                      disabled={isTogglingPublic}
+                      className="text-muted-foreground"
+                    >
+                      {isTogglingPublic ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Make Private'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {activeTab === 'summary' && (
             <div className="space-y-6">
