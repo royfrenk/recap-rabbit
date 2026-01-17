@@ -50,9 +50,16 @@ Ready for staging: yes
 ### Step 1: Verify Tests
 
 Before looking at code:
-- Did all tests pass?
-- Were new tests added for new code?
+- Did all unit tests pass?
+- Were new unit tests added for new code?
 - Do tests cover edge cases?
+- **E2E:** If this adds/changes user-facing features, are E2E tests included?
+
+**E2E test required for:**
+- New pages or routes
+- New user flows (subscribe, process, etc.)
+- Auth changes
+- Changes to critical paths (search, login, subscriptions)
 
 If tests are missing or failing, stop immediately:
 ```

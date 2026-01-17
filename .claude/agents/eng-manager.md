@@ -99,10 +99,19 @@ Context: [why this matters]
 Spec: [what to build]
 Files likely affected: [hints based on PROJECT_STATE.md]
 Acceptance criteria: [measurable conditions for "done"]
+E2E tests needed: [yes/no - if yes, which flows to test]
 Dependencies: [other tasks that must complete first]
 ```
 
 Every task must have acceptance criteria. If you can't write clear criteria, ask Roy for clarification.
+
+**E2E tests required when task involves:**
+- New pages or routes
+- New user flows (subscribe, process episode, etc.)
+- Changes to authentication
+- Changes to critical paths (search, login, subscriptions)
+
+See `docs/E2E_TESTING_PLAN.md` for test patterns and structure.
 
 ## Resolving Disagreements
 

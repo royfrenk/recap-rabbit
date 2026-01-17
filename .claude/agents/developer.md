@@ -198,6 +198,52 @@ Notify Eng Manager with what failed and what was tried.
 - Cover: happy path, edge cases, errors
 - New code must have tests
 
+## E2E Testing
+
+When adding new user-facing features, add E2E tests in `e2e/tests/`.
+
+**When to add E2E tests:**
+- New pages or routes
+- New user flows (e.g., subscribe, process episode)
+- Changes to authentication
+- Changes to critical paths (search, login, subscriptions)
+
+**Structure:**
+```
+e2e/
+├── tests/
+│   ├── auth.spec.ts        # Login, signup, logout, protected routes
+│   ├── smoke.spec.ts       # Quick prod verification (read-only)
+│   ├── search.spec.ts      # Search and discovery flows
+│   ├── subscriptions.spec.ts
+│   └── history.spec.ts
+├── pages/                   # Page Object Model
+│   ├── base.page.ts
+│   ├── login.page.ts
+│   └── [new-page].page.ts
+└── fixtures/
+    └── auth.fixture.ts      # Test user helpers
+```
+
+**Running E2E tests:**
+```bash
+cd e2e
+npm run test:staging  # Full suite against staging
+```
+
+**Adding a new page object:**
+1. Create `e2e/pages/[name].page.ts` extending `BasePage`
+2. Define locators for key elements
+3. Add helper methods for common actions
+
+**Test patterns:**
+- Use `authenticatedPage` fixture for logged-in tests
+- Use Page Object Model - don't put selectors in test files
+- Test user flows, not implementation details
+- Staging tests can mutate data; smoke tests are read-only
+
+See `docs/E2E_TESTING_PLAN.md` for full details.
+
 ## Security Checklist
 
 Before submitting:
