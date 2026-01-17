@@ -1033,3 +1033,36 @@ async def get_newest_episode_date(subscription_id: str) -> Optional[str]:
         ) as cursor:
             row = await cursor.fetchone()
             return row[0] if row and row[0] else None
+
+
+async def get_user_queued_episodes(user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """
+    Get all subscription episodes in 'processing' status for a user.
+
+    These are episodes that have been queued for processing but haven't
+    completed yet. Joins with subscriptions to get podcast name.
+    """
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT
+                se.id,
+                se.subscription_id,
+                se.episode_guid,
+                se.episode_title,
+                se.audio_url,
+                se.publish_date,
+                se.duration_seconds,
+                se.episode_id,
+                se.status,
+                se.created_at,
+                s.podcast_name,
+                s.artwork_url
+            FROM subscription_episodes se
+            JOIN subscriptions s ON se.subscription_id = s.id
+            WHERE s.user_id = ?
+            AND se.status = 'processing'
+            ORDER BY se.created_at DESC
+            LIMIT ?
+        """, (user_id, limit)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

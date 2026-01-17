@@ -455,3 +455,32 @@ export async function batchProcessEpisodes(
   })
   return response.data
 }
+
+export interface QueuedEpisode {
+  id: number
+  subscription_id: string
+  episode_guid: string
+  episode_title: string | null
+  audio_url: string | null
+  publish_date: string | null
+  duration_seconds: number | null
+  episode_id: string | null
+  status: string
+  created_at: string | null
+  podcast_name: string
+  artwork_url: string | null
+}
+
+export async function getProcessingQueue(
+  limit: number = 100
+): Promise<{ episodes: QueuedEpisode[]; total: number }> {
+  const response = await api.get('/subscriptions/queue', { params: { limit } })
+  return response.data
+}
+
+export async function resetStuckEpisodes(
+  subscriptionId: string
+): Promise<{ message: string; reset_count: number; episode_ids: number[] }> {
+  const response = await api.post(`/subscriptions/${subscriptionId}/reset-stuck`)
+  return response.data
+}

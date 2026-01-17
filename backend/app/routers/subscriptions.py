@@ -75,6 +75,22 @@ async def list_subscriptions(user: dict = Depends(require_user)):
     return SubscriptionListResponse(subscriptions=subscriptions)
 
 
+@router.get("/queue")
+async def get_processing_queue(
+    user: dict = Depends(require_user),
+    limit: int = Query(100, ge=1, le=500)
+):
+    """
+    Get all episodes currently in the processing queue for the user.
+
+    Returns subscription episodes with status='processing' across all
+    the user's subscriptions, including podcast name for context.
+    """
+    user_id = user["sub"]
+    episodes = await repository.get_user_queued_episodes(user_id, limit)
+    return {"episodes": episodes, "total": len(episodes)}
+
+
 @router.post("", response_model=Subscription)
 async def create_subscription(
     request: SubscriptionCreateRequest,
