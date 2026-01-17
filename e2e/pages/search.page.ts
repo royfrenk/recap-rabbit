@@ -40,17 +40,11 @@ export class SearchPage extends BasePage {
   async search(query: string) {
     await this.searchInput.fill(query);
     await this.searchButton.click();
-    // Wait for results to load - either API response or results visible
-    try {
-      await this.page.waitForResponse(
-        (response) => response.url().includes('/api/search') && response.status() === 200,
-        { timeout: 20000 }
-      );
-    } catch {
-      // If response wait fails, wait for results to appear instead
-    }
-    // Wait for results to render
-    await this.page.waitForTimeout(1000);
+    // Wait for search API response
+    await this.page.waitForResponse(
+      (response) => response.url().includes('/api/search') && response.status() === 200,
+      { timeout: 20000 }
+    ).catch(() => {});
     // Wait for result cards to be visible
     await this.resultCards.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   }
@@ -75,8 +69,8 @@ export class SearchPage extends BasePage {
   async clickPodcastName() {
     const podcastButton = this.page.locator('button:has(.lucide-podcast)').first();
     await podcastButton.click();
-    // Wait for episodes to load
-    await this.page.waitForTimeout(1000);
+    // Wait for episodes header to appear
+    await this.page.locator('text=/\\d+ episodes/').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   }
 
   /**

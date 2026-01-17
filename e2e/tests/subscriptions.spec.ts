@@ -115,9 +115,6 @@ test.describe('Subscriptions', () => {
       // Click on podcast to view episodes
       await searchPage.clickPodcastName();
 
-      // Wait for episodes to load
-      await authenticatedPage.waitForTimeout(1000);
-
       // Check if subscribe button is visible (not already subscribed)
       const subscribeButton = authenticatedPage.locator('button:has-text("Subscribe")').first();
       const unsubscribeButton = authenticatedPage.locator('button:has-text("Unsubscribe")').first();
