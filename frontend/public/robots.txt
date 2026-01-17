@@ -14,4 +14,4 @@ Disallow: /usage
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://recaprabbit.com/sitemap.xml
+Sitemap: https://www.recaprabbit.com/sitemap.xml

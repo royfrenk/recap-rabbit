@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://recaprabbit.com'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.recaprabbit.com'
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface PublicSummaryItem {
