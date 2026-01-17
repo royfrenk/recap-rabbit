@@ -54,8 +54,7 @@ export const metadata: Metadata = {
     images: ['/og-image.png'],
   },
   verification: {
-    // Add these after setting up Search Console
-    // google: 'your-google-verification-code',
+    google: 'Z85sXpYa55QoT_qR-P9LpuQc6AQfvGLhMxsqOqh5Vuw',
   },
   alternates: {
     canonical: siteUrl,
