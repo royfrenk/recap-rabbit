@@ -48,12 +48,6 @@ jobs:
           echo "Waiting 60s for Railway to deploy..."
           sleep 60
 
-      - name: Debug secrets
-        run: |
-          echo "STAGING_HTTP_USER is set: ${{ secrets.STAGING_HTTP_USER != '' }}"
-          echo "STAGING_HTTP_PASS is set: ${{ secrets.STAGING_HTTP_PASS != '' }}"
-          echo "E2E_USER_EMAIL is set: ${{ secrets.E2E_USER_EMAIL != '' }}"
-
       - name: Run E2E tests
         working-directory: ./e2e
         run: npm run test:staging
