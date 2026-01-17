@@ -8,32 +8,8 @@ import { processUrl } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { ArrowLeft, Clock, Calendar, Podcast, Sparkles, Loader2 } from 'lucide-react'
 import { PodcastEpisodeSchema } from '@/components/JsonLd'
-
-// Format publish date like Apple Podcasts
-function formatPublishDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return dateStr
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch {
-    return dateStr
-  }
-}
-
-// Format duration like "1 hr 31 min" or "45 min"
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.round((seconds % 3600) / 60)
-
-  if (hours > 0) {
-    return `${hours} hr ${minutes} min`
-  }
-  return `${minutes} min`
-}
+import { formatFullDate, formatDuration } from '@/lib/date'
+import { getSafeImageUrl } from '@/lib/image'
 
 export default function EpisodePreviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -110,9 +86,9 @@ export default function EpisodePreviewPage({ params }: { params: { id: string } 
         <CardContent className="p-6">
           {/* Header with artwork and basic info */}
           <div className="flex flex-col sm:flex-row gap-6">
-            {thumbnail && (
+            {getSafeImageUrl(thumbnail) && (
               <img
-                src={thumbnail}
+                src={getSafeImageUrl(thumbnail)!}
                 alt={title}
                 className="w-full sm:w-48 h-48 rounded-xl object-cover flex-shrink-0"
               />
@@ -130,7 +106,7 @@ export default function EpisodePreviewPage({ params }: { params: { id: string } 
                 {publishDate && (
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatPublishDate(publishDate)}</span>
+                    <span>{formatFullDate(publishDate)}</span>
                   </div>
                 )}
                 {durationSeconds && (

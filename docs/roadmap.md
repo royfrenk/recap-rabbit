@@ -10,9 +10,7 @@
 
 | Priority | Item | Status | Assigned | Notes |
 |----------|------|--------|----------|-------|
-| 1 | Fix formatDate duplication | Queued | — | Extract to lib/utils.ts |
-| 2 | Add episode pagination | Queued | — | Large podcasts load slowly |
-| 3 | Artwork URL validation | Queued | — | Security: potential tracking pixels |
+| — | Sprint complete | — | — | All tasks done |
 
 ---
 
@@ -41,6 +39,9 @@
 
 | Item | Completed | Commit | Notes |
 |------|-----------|--------|-------|
+| Artwork URL validation | 2026-01-16 | pending | Frontend lib/image.ts with 29 tests |
+| Add episode pagination | 2026-01-16 | pending | Load More button, 100 episodes per page |
+| Fix formatDate duplication | 2026-01-16 | pending | Consolidated to lib/date.ts with 36 tests |
 | Podcast subscription system | 2026-01-16 | d509a62 | Full feature: subscribe, auto-fetch, batch process |
 
 ---

@@ -50,6 +50,79 @@ export function formatDate(
 }
 
 /**
+ * Format a date in Apple Podcasts style with relative time for recent dates.
+ * - Less than 24 hours ago: "7h ago"
+ * - Same year: "Jan 8"
+ * - Different year: "12/25/2024"
+ *
+ * @param dateStr - ISO date string
+ * @returns Formatted date string
+ */
+export function formatRelativeDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+    // Less than 24 hours ago
+    if (diffHours < 24 && diffHours >= 0) {
+      return `${diffHours}h ago`;
+    }
+
+    // Same year - show "Jan 8" format
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // Different year - show "12/25/2024" format
+    return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
+ * Format a date in full format (e.g., "January 15, 2024").
+ *
+ * @param dateStr - ISO date string
+ * @returns Formatted date string
+ */
+export function formatFullDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
+ * Format duration in seconds to human readable format.
+ * - Less than 1 hour: "45 min"
+ * - 1 hour or more: "1 hr 31 min"
+ *
+ * @param seconds - Duration in seconds
+ * @returns Formatted duration string
+ */
+export function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours} hr ${minutes} min`;
+  }
+  return `${minutes} min`;
+}
+
+/**
  * Pre-configured date formatters for common use cases.
  */
 export const dateFormatters = {

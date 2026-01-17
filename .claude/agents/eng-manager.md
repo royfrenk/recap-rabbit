@@ -135,6 +135,22 @@ Don't let disagreements stall work. Decide within one exchange.
 9. Roy verifies production, rolls back if broken
 ```
 
+## Autonomous Mode
+
+When asked to "run the sprint" or "work autonomously":
+1. Assign next task to developer
+2. Developer implements and submits to reviewer
+3. Reviewer approves or requests changes
+4. If approved: developer deploys and updates state
+5. Move to next task
+6. Repeat until:
+   - All Active Sprint items are done
+   - A task is blocked
+   - A security issue is found
+   - You need Roy's input
+
+Do not ask for confirmation between tasks. Only stop when you hit a blocker or complete the sprint.
+
 ## What You Cannot Do
 
 - Write or modify code

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { formatDate, dateFormatters } from '../lib/date'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { formatDate, formatRelativeDate, formatFullDate, formatDuration, dateFormatters } from '../lib/date'
 
 describe('formatDate', () => {
   describe('null/undefined handling', () => {
@@ -188,5 +188,81 @@ describe('dateFormatters consistency', () => {
     expect(() => dateFormatters.publishDate(undefined)).not.toThrow()
     expect(() => dateFormatters.activityTime(undefined)).not.toThrow()
     expect(() => dateFormatters.usageLog(undefined)).not.toThrow()
+  })
+})
+
+describe('formatRelativeDate', () => {
+  beforeEach(() => {
+    // Mock current date to 2024-03-15 12:00:00 UTC for predictable tests
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-03-15T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should return relative time for dates less than 24 hours ago', () => {
+    expect(formatRelativeDate('2024-03-15T05:00:00Z')).toBe('7h ago')
+    expect(formatRelativeDate('2024-03-15T11:00:00Z')).toBe('1h ago')
+    expect(formatRelativeDate('2024-03-15T12:00:00Z')).toBe('0h ago')
+  })
+
+  it('should return short date format for dates in same year', () => {
+    const result = formatRelativeDate('2024-01-08T10:00:00Z')
+    expect(result).toMatch(/Jan/)
+    expect(result).toMatch(/8/)
+  })
+
+  it('should return numeric date format for dates in different year', () => {
+    const result = formatRelativeDate('2023-12-25T10:00:00Z')
+    expect(result).toMatch(/12/)
+    expect(result).toMatch(/25/)
+    expect(result).toMatch(/2023/)
+  })
+
+  it('should return input string for invalid dates', () => {
+    expect(formatRelativeDate('invalid-date')).toBe('invalid-date')
+  })
+})
+
+describe('formatFullDate', () => {
+  it('should format date in full format with long month', () => {
+    const result = formatFullDate('2024-01-15T10:00:00Z')
+    expect(result).toMatch(/January/)
+    expect(result).toMatch(/15/)
+    expect(result).toMatch(/2024/)
+  })
+
+  it('should handle various months correctly', () => {
+    expect(formatFullDate('2024-06-20T10:00:00Z')).toMatch(/June/)
+    expect(formatFullDate('2024-12-01T10:00:00Z')).toMatch(/December/)
+  })
+
+  it('should return input string for invalid dates', () => {
+    expect(formatFullDate('not-a-date')).toBe('not-a-date')
+  })
+})
+
+describe('formatDuration', () => {
+  it('should format duration less than an hour', () => {
+    expect(formatDuration(2700)).toBe('45 min')
+    expect(formatDuration(300)).toBe('5 min')
+    expect(formatDuration(60)).toBe('1 min')
+  })
+
+  it('should format duration of exactly one hour', () => {
+    expect(formatDuration(3600)).toBe('1 hr 0 min')
+  })
+
+  it('should format duration greater than one hour', () => {
+    expect(formatDuration(5460)).toBe('1 hr 31 min')
+    expect(formatDuration(7200)).toBe('2 hr 0 min')
+    expect(formatDuration(10800)).toBe('3 hr 0 min')
+  })
+
+  it('should round minutes correctly', () => {
+    expect(formatDuration(89)).toBe('1 min') // 1.48 min rounds to 1
+    expect(formatDuration(91)).toBe('2 min') // 1.52 min rounds to 2
   })
 })

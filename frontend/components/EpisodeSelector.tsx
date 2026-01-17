@@ -28,6 +28,10 @@ import { dateFormatters } from '@/lib/date'
 interface EpisodeSelectorProps {
   subscriptionId: string
   episodes: SubscriptionEpisode[]
+  totalEpisodes: number
+  hasMoreEpisodes: boolean
+  isLoadingMore: boolean
+  onLoadMore: () => void
   onProcessStarted: () => void
 }
 
@@ -75,6 +79,10 @@ function getDateRange(range: string): { start: Date; end: Date } {
 export default function EpisodeSelector({
   subscriptionId,
   episodes,
+  totalEpisodes,
+  hasMoreEpisodes,
+  isLoadingMore,
+  onLoadMore,
   onProcessStarted
 }: EpisodeSelectorProps) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -282,8 +290,11 @@ export default function EpisodeSelector({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              Pending Episodes ({filteredEpisodes.length})
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>Pending Episodes ({filteredEpisodes.length})</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                {episodes.length} of {totalEpisodes} loaded
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -322,6 +333,27 @@ export default function EpisodeSelector({
                 </div>
               ))}
             </div>
+
+            {/* Load More Button */}
+            {hasMoreEpisodes && (
+              <div className="mt-4 text-center">
+                <Button
+                  variant="outline"
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="gap-2"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>Load More Episodes</>
+                  )}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

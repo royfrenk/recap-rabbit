@@ -53,9 +53,13 @@
     │       ├── label.tsx
     │       └── switch.tsx
     ├── lib/
-    │   └── api.ts                    # API client, types, fetch functions
+    │   ├── api.ts                    # API client, types, fetch functions
+    │   ├── date.ts                   # Shared date/duration formatting utilities
+    │   └── image.ts                  # Image URL validation (prevents tracking pixels)
     ├── tests/
-    │   └── subscription-api.test.ts  # 14 unit tests
+    │   ├── date.test.ts              # 36 date formatting tests
+    │   ├── image.test.ts             # 29 image URL validation tests
+    │   └── subscription-api.test.ts  # 14 subscription API tests
     ├── vitest.config.ts
     └── package.json
 ```
@@ -137,7 +141,7 @@ All endpoints require JWT auth via `Depends(require_user)`.
 | Suite | Count | Last run |
 |-------|-------|----------|
 | Backend | 59 | 2026-01-16 |
-| Frontend | 14 | 2026-01-16 |
+| Frontend | 79 | 2026-01-16 |
 
 ---
 
@@ -147,10 +151,7 @@ All endpoints require JWT auth via `Depends(require_user)`.
 
 | Issue | Location | Severity | Notes |
 |-------|----------|----------|-------|
-| Duplicate `formatDate` function | 3 frontend files | Low | Extract to `lib/utils.ts` |
-| No pagination on episode fetch | `subscription_checker.py` | Medium | Large podcasts (800+ episodes) load all at once |
 | Sequential scheduler | `check_all_active_subscriptions()` | Low | Processes subscriptions one-by-one |
-| Artwork URL not validated | Episode display | Low | Potential tracking pixels |
 | JWT secret hardcoded | `backend/app/routers/auth.py` | High | Change before production |
 
 ---
@@ -221,6 +222,9 @@ Configured in Railway dashboard per environment:
 
 | Date | Change | Commit |
 |------|--------|--------|
+| 2026-01-16 | Added frontend image URL validation (lib/image.ts) to prevent tracking pixels | pending |
+| 2026-01-16 | Added episode pagination with Load More button | pending |
+| 2026-01-16 | Consolidated date formatting to shared lib/date.ts utility | pending |
 | 2026-01-16 | Added podcast subscription system with RSS fetching, auto-processing, batch processing | d509a62 |
 
 ---
