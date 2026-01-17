@@ -65,7 +65,7 @@ export default defineConfig({
       name: 'production',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: process.env.PROD_URL || 'https://recaprabbit.com',
+        baseURL: process.env.BASE_URL || process.env.PROD_URL || 'https://www.recaprabbit.com',
       },
       testMatch: /smoke\.spec\.ts/,  // Only run smoke tests in prod
     },
