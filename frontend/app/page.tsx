@@ -12,6 +12,8 @@ import SubscribeButton from '@/components/SubscribeButton'
 import { useAuth } from '@/lib/auth'
 import { Clock, Podcast, Calendar, ChevronLeft, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { formatRelativeDate, formatDuration } from '@/lib/date'
+import { getSafeImageUrl } from '@/lib/image'
 
 const DEFAULT_POPULAR_SEARCHES = [
   "Tim Ferriss productivity",
@@ -19,44 +21,6 @@ const DEFAULT_POPULAR_SEARCHES = [
   "Lex Fridman AI",
   "Joe Rogan science",
 ]
-
-// Format publish date like Apple Podcasts (e.g., "Jan 8", "12/25/2024", "7h ago")
-function formatPublishDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return dateStr
-
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-
-    // Less than 24 hours ago
-    if (diffHours < 24 && diffHours >= 0) {
-      return `${diffHours}h ago`
-    }
-
-    // Same year - show "Jan 8" format
-    if (date.getFullYear() === now.getFullYear()) {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-
-    // Different year - show "12/25/2024" format
-    return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
-  } catch {
-    return dateStr
-  }
-}
-
-// Format duration like "1 hr 31 min" or "45 min"
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.round((seconds % 3600) / 60)
-
-  if (hours > 0) {
-    return `${hours} hr ${minutes} min`
-  }
-  return `${minutes} min`
-}
 
 export default function Home() {
   const router = useRouter()
@@ -275,9 +239,9 @@ export default function Home() {
                 Back to search
               </Button>
               <div className="flex items-center gap-4">
-                {viewingPodcast.thumbnail && (
+                {getSafeImageUrl(viewingPodcast.thumbnail) && (
                   <img
-                    src={viewingPodcast.thumbnail}
+                    src={getSafeImageUrl(viewingPodcast.thumbnail)!}
                     alt=""
                     className="w-20 h-20 rounded-lg object-cover"
                   />
@@ -324,9 +288,9 @@ export default function Home() {
                 >
                   <CardContent className="p-4">
                     <div className="flex gap-4">
-                      {episode.thumbnail && (
+                      {getSafeImageUrl(episode.thumbnail) && (
                         <img
-                          src={episode.thumbnail}
+                          src={getSafeImageUrl(episode.thumbnail)!}
                           alt=""
                           className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                         />
@@ -353,7 +317,7 @@ export default function Home() {
                           {episode.publish_date && (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{formatPublishDate(episode.publish_date)}</span>
+                              <span>{formatRelativeDate(episode.publish_date)}</span>
                             </div>
                           )}
                           {episode.duration_seconds && (

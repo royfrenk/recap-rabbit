@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment files (contain secrets)
+.env.staging
+.env.production
+.env.local
+.env
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# IDE
+.vscode/
+.idea/

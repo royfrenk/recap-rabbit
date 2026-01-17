@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,14 +18,18 @@ import {
 } from 'lucide-react'
 import {
   getSubscription,
+  getSubscriptionEpisodes,
   updateSubscription,
   deleteSubscription,
   checkSubscriptionForNewEpisodes,
-  SubscriptionWithEpisodes
+  SubscriptionWithEpisodes,
+  SubscriptionEpisode
 } from '@/lib/api'
 import EpisodeSelector from '@/components/EpisodeSelector'
 import { useAuth } from '@/lib/auth'
 import { dateFormatters } from '@/lib/date'
+
+const EPISODES_PER_PAGE = 100
 
 export default function SubscriptionDetailPage() {
   const router = useRouter()
@@ -34,7 +38,10 @@ export default function SubscriptionDetailPage() {
   const { user, isLoading: authLoading } = useAuth()
 
   const [data, setData] = useState<SubscriptionWithEpisodes | null>(null)
+  const [episodes, setEpisodes] = useState<SubscriptionEpisode[]>([])
+  const [totalEpisodes, setTotalEpisodes] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -52,8 +59,10 @@ export default function SubscriptionDetailPage() {
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      const result = await getSubscription(subscriptionId, { limit: 500 })
+      const result = await getSubscription(subscriptionId, { limit: EPISODES_PER_PAGE })
       setData(result)
+      setEpisodes(result.episodes)
+      setTotalEpisodes(result.total_episodes)
     } catch (error: any) {
       console.error('Failed to fetch subscription:', error)
       if (error.response?.status === 404) {
@@ -63,6 +72,25 @@ export default function SubscriptionDetailPage() {
       setIsLoading(false)
     }
   }
+
+  const loadMoreEpisodes = useCallback(async () => {
+    if (isLoadingMore || episodes.length >= totalEpisodes) return
+
+    setIsLoadingMore(true)
+    try {
+      const result = await getSubscriptionEpisodes(subscriptionId, {
+        limit: EPISODES_PER_PAGE,
+        offset: episodes.length
+      })
+      setEpisodes(prev => [...prev, ...result.episodes])
+    } catch (error) {
+      console.error('Failed to load more episodes:', error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [subscriptionId, episodes.length, totalEpisodes, isLoadingMore])
+
+  const hasMoreEpisodes = episodes.length < totalEpisodes
 
   const handleToggleActive = async () => {
     if (!data) return
@@ -139,7 +167,7 @@ export default function SubscriptionDetailPage() {
     )
   }
 
-  const { subscription, episodes } = data
+  const { subscription } = data
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -257,6 +285,10 @@ export default function SubscriptionDetailPage() {
       <EpisodeSelector
         subscriptionId={subscriptionId}
         episodes={episodes}
+        totalEpisodes={totalEpisodes}
+        hasMoreEpisodes={hasMoreEpisodes}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMoreEpisodes}
         onProcessStarted={fetchData}
       />
     </div>

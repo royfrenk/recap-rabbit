@@ -18,7 +18,8 @@ app.include_router(router, prefix="/api/subscriptions")
 
 def create_test_token(user_id: str = "test-user-123") -> str:
     """Create a valid JWT token for testing."""
-    secret = "your-secret-key-change-in-production"
+    import os
+    secret = os.environ.get("JWT_SECRET", "test-secret-key-for-testing-only")
     payload = {
         "sub": user_id,
         "exp": datetime.utcnow() + timedelta(hours=1)
