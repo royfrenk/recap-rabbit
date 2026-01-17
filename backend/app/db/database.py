@@ -115,6 +115,13 @@ async def init_database():
             CREATE INDEX IF NOT EXISTS idx_episodes_user ON episodes(user_id)
         """)
 
+        # Composite index for efficient episode list queries
+        # Covers: WHERE user_id = ? AND status = ? ORDER BY created_at DESC
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodes_user_status_created
+            ON episodes(user_id, status, created_at DESC)
+        """)
+
         # Usage tracking table
         await db.execute("""
             CREATE TABLE IF NOT EXISTS usage_logs (

@@ -173,8 +173,9 @@ export default function EpisodeSelector({
     }
   }
 
-  // Show completed/processing episodes separately
-  const otherEpisodes = episodes.filter(ep => ep.status !== 'pending')
+  // Show queued (processing) episodes separately from completed/failed
+  const queuedEpisodes = episodes.filter(ep => ep.status === 'processing')
+  const completedEpisodes = episodes.filter(ep => ['completed', 'skipped', 'failed'].includes(ep.status))
 
   return (
     <div className="space-y-6">
@@ -348,17 +349,60 @@ export default function EpisodeSelector({
         </div>
       )}
 
-      {/* Other Episodes (Processed/Processing/Failed) */}
-      {otherEpisodes.length > 0 && (
+      {/* In Queue (Processing) */}
+      {queuedEpisodes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              Other Episodes ({otherEpisodes.length})
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              In Queue ({queuedEpisodes.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {otherEpisodes.map((episode) => (
+              {queuedEpisodes.map((episode) => (
+                <div
+                  key={episode.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 bg-blue-50/50"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {episode.episode_title || 'Untitled'}
+                    </p>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {dateFormatters.publishDate(episode.publish_date)}
+                      </span>
+                      {episode.duration_seconds && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatDuration(episode.duration_seconds)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge className={statusStyles[episode.status].className}>
+                    {statusStyles[episode.status].label}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Completed/Failed Episodes */}
+      {completedEpisodes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Processed Episodes ({completedEpisodes.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {completedEpisodes.map((episode) => (
                 <div
                   key={episode.id}
                   className="flex items-center gap-3 p-3 rounded-lg border border-border"

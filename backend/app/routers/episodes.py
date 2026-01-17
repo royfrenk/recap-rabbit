@@ -188,19 +188,22 @@ async def list_episodes(
 ):
     """List all episodes with optional status filtering."""
     user_id = user["sub"]
-    episodes = await repository.get_all_episodes(user_id, status, limit, offset)
+
+    # Use lightweight query that only fetches columns needed for list view
+    # This avoids fetching large transcript/summary columns
+    episodes = await repository.get_episodes_for_list(user_id, status, limit, offset)
     total = await repository.get_episode_count(user_id, status)
 
-    # Convert to list items (lighter weight)
+    # Convert to list items
     items = [
         EpisodeListItem(
-            id=ep.id,
-            title=ep.title,
-            podcast_name=ep.podcast_name,
-            status=ep.status,
-            progress=ep.progress,
-            created_at=ep.created_at,
-            duration_seconds=ep.duration_seconds
+            id=ep['id'],
+            title=ep.get('title'),
+            podcast_name=ep.get('podcast_name'),
+            status=ep['status'],
+            progress=ep.get('progress', 0),
+            created_at=ep.get('created_at'),
+            duration_seconds=ep.get('duration_seconds')
         )
         for ep in episodes
     ]
