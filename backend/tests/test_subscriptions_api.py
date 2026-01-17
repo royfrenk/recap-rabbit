@@ -209,6 +209,82 @@ class TestBatchProcessEpisodes:
             assert "Maximum" not in response.json().get("detail", "")
 
 
+class TestResetStuckEpisodes:
+    """Tests for POST /api/subscriptions/{id}/reset-stuck endpoint."""
+
+    def test_requires_authentication(self, client):
+        """Should require authentication."""
+        response = client.post("/api/subscriptions/test-sub/reset-stuck")
+        assert response.status_code in [401, 403]
+
+    def test_returns_404_for_nonexistent_subscription(self, client, auth_headers):
+        """Should return 404 if subscription not found."""
+        with patch('app.routers.subscriptions.repository') as mock_repo:
+            mock_repo.get_subscription = AsyncMock(return_value=None)
+            response = client.post(
+                "/api/subscriptions/nonexistent-id/reset-stuck",
+                headers=auth_headers
+            )
+            assert response.status_code == 404
+            assert "not found" in response.json()["detail"].lower()
+
+    def test_returns_zero_when_no_stuck_episodes(self, client, auth_headers):
+        """Should return reset_count=0 when no episodes are stuck."""
+        with patch('app.routers.subscriptions.repository') as mock_repo:
+            mock_repo.get_subscription = AsyncMock(return_value={
+                'id': 'test-sub',
+                'user_id': 'test-user-123',
+                'podcast_name': 'Test'
+            })
+            mock_repo.get_stuck_subscription_episodes = AsyncMock(return_value=[])
+
+            response = client.post(
+                "/api/subscriptions/test-sub/reset-stuck",
+                headers=auth_headers
+            )
+            assert response.status_code == 200
+            assert response.json()["reset_count"] == 0
+
+    def test_resets_stuck_episodes_to_pending(self, client, auth_headers):
+        """Should reset stuck episodes and return count."""
+        with patch('app.routers.subscriptions.repository') as mock_repo:
+            mock_repo.get_subscription = AsyncMock(return_value={
+                'id': 'test-sub',
+                'user_id': 'test-user-123',
+                'podcast_name': 'Test'
+            })
+            mock_repo.get_stuck_subscription_episodes = AsyncMock(return_value=[
+                {'id': 1, 'episode_title': 'Ep 1'},
+                {'id': 2, 'episode_title': 'Ep 2'},
+            ])
+            mock_repo.update_subscription_episode_status = AsyncMock(return_value=2)
+
+            response = client.post(
+                "/api/subscriptions/test-sub/reset-stuck",
+                headers=auth_headers
+            )
+            assert response.status_code == 200
+            assert response.json()["reset_count"] == 2
+            assert response.json()["episode_ids"] == [1, 2]
+
+            # Verify status was updated to 'pending'
+            mock_repo.update_subscription_episode_status.assert_called_once_with(
+                [1, 2], 'pending'
+            )
+
+    def test_validates_subscription_ownership(self, client, auth_headers):
+        """Should only allow resetting episodes for user's own subscription."""
+        with patch('app.routers.subscriptions.repository') as mock_repo:
+            # get_subscription returns None when user_id doesn't match
+            mock_repo.get_subscription = AsyncMock(return_value=None)
+
+            response = client.post(
+                "/api/subscriptions/other-users-sub/reset-stuck",
+                headers=auth_headers
+            )
+            assert response.status_code == 404
+
+
 class TestConstants:
     """Tests for module constants."""
 

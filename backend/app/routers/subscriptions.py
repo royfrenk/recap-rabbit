@@ -396,3 +396,41 @@ async def fetch_more_episodes(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to fetch additional episodes")
+
+
+@router.post("/{subscription_id}/reset-stuck")
+async def reset_stuck_episodes(
+    subscription_id: str,
+    user: dict = Depends(require_user)
+):
+    """
+    Reset episodes that are stuck in 'processing' status back to 'pending'.
+
+    This allows retrying episodes that failed silently during processing.
+    Only affects episodes that have been in 'processing' status without a
+    linked main episode (indicating they never started actual processing).
+    """
+    user_id = user["sub"]
+
+    row = await repository.get_subscription(subscription_id, user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    # Find stuck episodes: in 'processing' status but no linked episode
+    stuck_episodes = await repository.get_stuck_subscription_episodes(subscription_id)
+
+    if not stuck_episodes:
+        return {
+            "message": "No stuck episodes found",
+            "reset_count": 0
+        }
+
+    # Reset them to pending
+    episode_ids = [ep['id'] for ep in stuck_episodes]
+    await repository.update_subscription_episode_status(episode_ids, 'pending')
+
+    return {
+        "message": f"Reset {len(episode_ids)} stuck episodes to pending",
+        "reset_count": len(episode_ids),
+        "episode_ids": episode_ids
+    }

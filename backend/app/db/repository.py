@@ -415,6 +415,56 @@ async def get_all_episodes(
             return [_row_to_episode(dict(row)) for row in rows]
 
 
+async def get_episodes_for_list(
+    user_id: str,
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
+) -> List[dict]:
+    """
+    Get lightweight episode data for list views.
+    Only fetches columns needed for EpisodeListItem, avoiding large transcript/summary fields.
+    """
+    # Only select columns needed for the list view
+    columns = "id, title, podcast_name, status, progress, created_at, duration_seconds"
+
+    async with get_db() as db:
+        if status_filter and status_filter != 'all':
+            if status_filter == 'processing':
+                processing_statuses = (
+                    'pending', 'downloading', 'transcribing',
+                    'diarizing', 'cleaning', 'summarizing'
+                )
+                placeholders = ','.join('?' * len(processing_statuses))
+                query = f"""
+                    SELECT {columns} FROM episodes
+                    WHERE user_id = ? AND status IN ({placeholders})
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                """
+                params = (user_id, *processing_statuses, limit, offset)
+            else:
+                query = f"""
+                    SELECT {columns} FROM episodes
+                    WHERE user_id = ? AND status = ?
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                """
+                params = (user_id, status_filter, limit, offset)
+        else:
+            query = f"""
+                SELECT {columns} FROM episodes
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """
+            params = (user_id, limit, offset)
+
+        async with db.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
 async def get_episode_count(user_id: str, status_filter: Optional[str] = None) -> int:
     """Get total count of episodes for a user."""
     async with get_db() as db:
@@ -911,6 +961,28 @@ async def update_subscription_episode_status(
         result = await db.execute(query, params)
         await db.commit()
         return result.rowcount
+
+
+async def get_stuck_subscription_episodes(subscription_id: str) -> List[Dict[str, Any]]:
+    """
+    Get subscription episodes that are stuck in 'processing' status.
+
+    An episode is considered stuck if:
+    - Status is 'processing'
+    - No linked main episode (episode_id is NULL)
+
+    This indicates the processing started but never completed or failed properly.
+    """
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT id, episode_guid, episode_title, status, created_at
+            FROM subscription_episodes
+            WHERE subscription_id = ?
+            AND status = 'processing'
+            AND episode_id IS NULL
+        """, (subscription_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
 
 
 async def get_subscription_episode_by_id(episode_id: int) -> Optional[Dict[str, Any]]:
