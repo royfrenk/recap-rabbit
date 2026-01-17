@@ -27,9 +27,9 @@ export class HistoryPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.pageTitle = page.locator('h1:has-text("Processing History")');
-    // Episode cards contain the podcast icon and date info
+    // Episode cards contain the podcast icon
     this.episodeCards = page.locator('[class*="card" i]').filter({
-      has: page.locator('.lucide-podcast, text=/min/')
+      has: page.locator('.lucide-podcast')
     });
     this.episodeCount = page.locator('text=/\\d+ episode/');
     this.emptyState = page.locator('text="No episodes found"');
