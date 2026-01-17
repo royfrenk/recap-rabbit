@@ -45,7 +45,11 @@ export class SubscriptionsPage extends BasePage {
    * Get the count of subscription cards.
    */
   async getSubscriptionCount(): Promise<number> {
-    await this.page.waitForTimeout(500);
+    // Wait for either subscription cards or empty state to be visible
+    await Promise.race([
+      this.subscriptionCards.first().waitFor({ state: 'visible', timeout: 5000 }),
+      this.emptyState.waitFor({ state: 'visible', timeout: 5000 }),
+    ]).catch(() => {});
     return await this.subscriptionCards.count();
   }
 
@@ -122,7 +126,8 @@ export class SubscriptionDetailPage extends BasePage {
    * Get the count of episode cards.
    */
   async getEpisodeCount(): Promise<number> {
-    await this.page.waitForTimeout(500);
+    // Wait for episode cards to be visible
+    await this.episodeCards.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
     return await this.episodeCards.count();
   }
 
@@ -130,9 +135,14 @@ export class SubscriptionDetailPage extends BasePage {
    * Click Load More button.
    */
   async clickLoadMore() {
+    const currentCount = await this.episodeCards.count();
     await this.loadMoreButton.click();
-    // Wait for more episodes to load
-    await this.page.waitForTimeout(1000);
+    // Wait for more episodes to load by checking count increased
+    await this.page.waitForFunction(
+      (count) => document.querySelectorAll('[class*="Card"]').length > count,
+      currentCount,
+      { timeout: 10000 }
+    ).catch(() => {});
   }
 
   /**

@@ -16,9 +16,6 @@ test.describe('History', () => {
       const historyPage = new HistoryPage(authenticatedPage);
       await historyPage.goto();
 
-      // Wait for page to load
-      await authenticatedPage.waitForTimeout(1000);
-
       // Should show either episodes, empty state, or at least the page loaded
       const hasEpisodes = await historyPage.hasEpisodes();
       const isEmpty = await historyPage.isEmpty();
@@ -37,14 +34,8 @@ test.describe('History', () => {
       // Click on Completed filter
       await historyPage.filterBy('completed');
 
-      // Wait for filter to take effect
-      await authenticatedPage.waitForTimeout(500);
-
       // Click on All filter
       await historyPage.filterBy('all');
-
-      // Wait for filter to take effect
-      await authenticatedPage.waitForTimeout(500);
 
       // If we got here without errors, filters work
       expect(true).toBe(true);
@@ -56,9 +47,6 @@ test.describe('History', () => {
 
       // Click on Queue filter
       await historyPage.filterBy('queue');
-
-      // Wait for list to update
-      await authenticatedPage.waitForTimeout(1000);
 
       // Should show queue view (either episodes, empty queue message, or page loaded)
       const hasEpisodes = await historyPage.hasEpisodes();
@@ -73,9 +61,6 @@ test.describe('History', () => {
     test('clicking episode navigates to detail', async ({ authenticatedPage }) => {
       const historyPage = new HistoryPage(authenticatedPage);
       await historyPage.goto();
-
-      // Wait for page to load
-      await authenticatedPage.waitForTimeout(1000);
 
       const hasEpisodes = await historyPage.hasEpisodes();
 
@@ -98,8 +83,6 @@ test.describe('History', () => {
 
       // Filter to completed only
       await historyPage.filterBy('completed');
-
-      await authenticatedPage.waitForTimeout(1000);
 
       const hasEpisodes = await historyPage.hasEpisodes();
 
