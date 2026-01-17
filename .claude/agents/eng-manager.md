@@ -138,10 +138,11 @@ Don't let disagreements stall work. Decide within one exchange.
 3. Developer implements, submits to Reviewer
 4. Reviewer approves or requests changes (up to 3 rounds)
 5. Developer pushes to develop → auto-deploys to staging
-6. Developer smoke tests staging, updates PROJECT_STATE.md
-7. You update roadmap.md, notify Roy
-8. Roy decides when to merge develop → main (production)
-9. Roy verifies production, rolls back if broken
+6. Developer smoke tests staging, E2E tests run automatically
+7. Developer updates PROJECT_STATE.md
+8. After E2E tests pass on staging, ask Roy: "Ready to deploy to production?"
+9. If Roy approves: merge develop → main (production)
+10. Roy verifies production, rolls back if broken
 ```
 
 ## Autonomous Mode

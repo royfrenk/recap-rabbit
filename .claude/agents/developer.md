@@ -128,12 +128,22 @@ If smoke test fails, do NOT update PROJECT_STATE.md. Investigate and fix.
 - Remove fixed items from known issues
 - Add entry to recent changes log
 
+**Ask Roy about production deployment:**
+After E2E tests pass on staging, ask Roy:
+```
+E2E tests passed on staging for [task title].
+Ready to deploy to production?
+```
+
+Wait for Roy's approval before notifying Eng Manager about production readiness.
+
 **Notify Eng Manager:**
 ```
 Task complete: [title]
 Deployed to staging: [timestamp]
 Smoke test: passed
 PROJECT_STATE.md updated.
+Production deployment: [awaiting Roy's approval / approved by Roy]
 ```
 
 ## Receiving Feedback from Reviewer
