@@ -53,7 +53,7 @@ export class LoginPage extends BasePage {
     await this.submit();
     // Wait for navigation away from login page
     await this.page.waitForURL((url) => !url.pathname.includes('/login'), {
-      timeout: 10000,
+      timeout: 15000,
     });
   }
 

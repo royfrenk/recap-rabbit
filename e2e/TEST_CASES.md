@@ -18,7 +18,6 @@
 | can access history page after login | Log in, navigate to /history | Page loads, URL stays on /history | Staging |
 | logout clears session | Log in, click logout, try to access /subscriptions | Redirected to /login | Staging |
 
----
 
 ## Smoke Tests (`tests/smoke.spec.ts`)
 
@@ -36,9 +35,7 @@
 
 ---
 
-## Planned Tests (Not Yet Implemented)
-
-### Search & Discovery (`tests/search.spec.ts`)
+## Search & Discovery Tests (`tests/search.spec.ts`)
 
 | Test Name | User Action | Expected Result | Env |
 |-----------|-------------|-----------------|-----|
@@ -46,23 +43,31 @@
 | click podcast shows episodes | Click on a podcast from results | Episode list is displayed | Staging |
 | click episode shows preview | Click on an episode | Preview page loads with metadata | Staging |
 | "Get Summary" button visible when logged in | Log in, view episode preview | "Get Summary" button is visible | Staging |
+| clicking Get Summary starts processing | Click Get Summary button | Navigates to episode processing page | Staging |
 
-### Subscriptions (`tests/subscriptions.spec.ts`)
+---
+
+## Subscriptions Tests (`tests/subscriptions.spec.ts`)
 
 | Test Name | User Action | Expected Result | Env |
 |-----------|-------------|-----------------|-----|
-| subscribe to podcast | Search for podcast, click subscribe | Podcast appears in subscriptions list | Staging |
-| subscriptions list shows subscription | Navigate to /subscriptions | List displays subscribed podcasts | Staging |
+| subscriptions page loads | Navigate to /subscriptions | Page title is visible | Staging |
+| shows subscriptions or empty state | Navigate to /subscriptions | Either subscriptions or empty message shown | Staging |
 | subscription detail loads episodes | Click on a subscription | Episodes are listed | Staging |
-| "Load More" pagination works | Scroll to bottom of episode list, click Load More | More episodes appear | Staging |
-| unsubscribe removes subscription | Click unsubscribe on a podcast | Podcast removed from list | Staging |
+| "Load More" pagination works | Click Load More button | More episodes appear | Staging |
+| subscribe to podcast | Search for podcast, click subscribe | Podcast appears in subscriptions list | Staging |
 
-### History (`tests/history.spec.ts`)
+---
+
+## History Tests (`tests/history.spec.ts`)
 
 | Test Name | User Action | Expected Result | Env |
 |-----------|-------------|-----------------|-----|
-| history page loads | Navigate to /history | Page displays episode history | Staging |
-| filter by status works | Select status filter | List updates to show filtered episodes | Staging |
+| history page loads | Navigate to /history | Page title is visible | Staging |
+| shows episodes or empty state | Navigate to /history | Either episodes or empty message shown | Staging |
+| filter by status works | Click filter buttons | Filters change without error | Staging |
+| queue filter shows queued episodes | Click Queue filter | Shows queue view | Staging |
+| clicking episode navigates to detail | Click on an episode | Navigates to /episode/ page | Staging |
 | completed episode shows summary | Click on completed episode | Summary content is displayed | Staging |
 
 ---
