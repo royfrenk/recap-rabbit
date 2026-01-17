@@ -19,7 +19,12 @@ router = APIRouter()
 security = HTTPBearer(auto_error=False)
 
 # JWT settings
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError(
+        "JWT_SECRET environment variable is required. "
+        "Set it to a secure random string (e.g., openssl rand -hex 32)"
+    )
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 1 week
 

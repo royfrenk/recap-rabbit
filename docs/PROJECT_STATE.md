@@ -140,7 +140,7 @@ All endpoints require JWT auth via `Depends(require_user)`.
 
 | Suite | Count | Last run |
 |-------|-------|----------|
-| Backend | 59 | 2026-01-16 |
+| Backend | 130 | 2026-01-16 |
 | Frontend | 79 | 2026-01-16 |
 
 ---
@@ -152,7 +152,6 @@ All endpoints require JWT auth via `Depends(require_user)`.
 | Issue | Location | Severity | Notes |
 |-------|----------|----------|-------|
 | Sequential scheduler | `check_all_active_subscriptions()` | Low | Processes subscriptions one-by-one |
-| JWT secret hardcoded | `backend/app/routers/auth.py` | High | Change before production |
 
 ---
 
@@ -160,7 +159,7 @@ All endpoints require JWT auth via `Depends(require_user)`.
 
 | Variable | Location | Notes |
 |----------|----------|-------|
-| JWT_SECRET | `backend/app/routers/auth.py` | Hardcoded as `your-secret-key-change-in-production` |
+| JWT_SECRET | `backend/app/routers/auth.py` | Required env var, no default (generate with `openssl rand -hex 32`) |
 | Database path | `backend/data/podcatchup.db` | SQLite file |
 
 ---
@@ -222,9 +221,10 @@ Configured in Railway dashboard per environment:
 
 | Date | Change | Commit |
 |------|--------|--------|
-| 2026-01-16 | Added frontend image URL validation (lib/image.ts) to prevent tracking pixels | pending |
-| 2026-01-16 | Added episode pagination with Load More button | pending |
-| 2026-01-16 | Consolidated date formatting to shared lib/date.ts utility | pending |
+| 2026-01-16 | Made JWT_SECRET a required env var (security fix) | pending |
+| 2026-01-16 | Added frontend image URL validation (lib/image.ts) to prevent tracking pixels | 8bceb13 |
+| 2026-01-16 | Added episode pagination with Load More button | 8bceb13 |
+| 2026-01-16 | Consolidated date formatting to shared lib/date.ts utility | 8bceb13 |
 | 2026-01-16 | Added podcast subscription system with RSS fetching, auto-processing, batch processing | d509a62 |
 
 ---
