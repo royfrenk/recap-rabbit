@@ -3,6 +3,11 @@ const nextConfig = {
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
     return [
+      // Google Search Console verification
+      {
+        source: '/googledcf1c9efdd7ac7ca.html',
+        destination: '/google-verify',
+      },
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
