@@ -104,7 +104,7 @@ jobs:
         working-directory: ./e2e
         run: npm run test:prod
         env:
-          BASE_URL: ${{ vars.PROD_URL || 'https://recaprabbit.com' }}
+          BASE_URL: ${{ vars.PROD_URL || 'https://www.recaprabbit.com' }}
           E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           E2E_READONLY: 'true'
