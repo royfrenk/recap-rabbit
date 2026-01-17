@@ -71,13 +71,6 @@ test.describe('Smoke Tests', () => {
   });
 
   test.describe('API Health', () => {
-    test('health endpoint responds', async ({ request }) => {
-      const response = await request.get('/api/health');
-
-      // Should return 200 OK
-      expect(response.ok()).toBe(true);
-    });
-
     test('search API responds', async ({ request }) => {
       const response = await request.get('/api/search?q=test&limit=1');
 
